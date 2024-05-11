@@ -1854,8 +1854,8 @@ allocPrune_domain
 	fprintf(stderr, "Not enough memory to perform factorization.\n");
 	return (PS->allocMem);
       }
-      lsubPr  = (void *) SUPERLU_MALLOC(nzlmaxPr * lword);
-      usubPr  = (void *) SUPERLU_MALLOC(nzumaxPr * lword);
+      lsubPr  = (int_t *) SUPERLU_MALLOC(nzlmaxPr * lword);
+      usubPr  = (int_t *) SUPERLU_MALLOC(nzumaxPr * lword);
       ++no_expand_pr;
     }
   }    
@@ -1946,8 +1946,8 @@ int symbfact_alloc
   xlsub  = intMalloc_symbfact(nvtcs_loc+1);
   xusub  = intMalloc_symbfact(nvtcs_loc+1);
   
-  lsub = (void *) SUPERLU_MALLOC(nzlmax * lword);
-  usub = (void *) SUPERLU_MALLOC(nzumax * lword);
+  lsub = (int_t *) SUPERLU_MALLOC(nzlmax * lword);
+  usub = (int_t *) SUPERLU_MALLOC(nzumax * lword);
   
   while ( !lsub || !usub ) {
     if (!lsub) SUPERLU_FREE(lsub); 
@@ -1960,8 +1960,8 @@ int symbfact_alloc
       fprintf(stderr, "Not enough memory to perform factorization.\n");
       return (PS->allocMem);
     }
-    lsub  = (void *) SUPERLU_MALLOC(nzlmax * lword);
-    usub  = (void *) SUPERLU_MALLOC(nzumax * lword);
+    lsub  = (int_t *) SUPERLU_MALLOC(nzlmax * lword);
+    usub  = (int_t *) SUPERLU_MALLOC(nzumax * lword);
     ++no_expand;
   }
   
@@ -5363,7 +5363,7 @@ static int_t *
 intCalloc_symbfact(int_t n)
 {
   int_t *buf;
-  register int_t i;
+  int_t i;
 
   if (n == 0)
     buf = NULL;

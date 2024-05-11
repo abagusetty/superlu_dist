@@ -6,7 +6,6 @@ dread_binary(FILE *fp, int_t *m, int_t *n, int_t *nnz,
 {
     int_t isize = sizeof(int_t), dsize = sizeof(double);
     int_t nnz_read;
-    int_t i,j;
     fread(n, isize, 1, fp);
     fread(nnz, isize, 1, fp);
     printf("fread n " IFMT "\tnnz " IFMT "\n", *n, *nnz);

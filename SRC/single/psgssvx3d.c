@@ -615,14 +615,14 @@ int scheckLUFromDisk(int nsupers, int_t *xsup, sLUstruct_t *LUstruct)
 void sDumpLblocks3D(int_t nsupers, gridinfo3d_t *grid3d,
 		  Glu_persist_t *Glu_persist, sLocalLU_t *Llu)
 {
-    register int c, extra, gb, j, i, lb, nsupc, nsupr, len, nb, ncb;
+    int c, extra, gb, j, i, lb, nsupc, nsupr, len, nb, ncb;
     int k, mycol, r, n, nmax;
     int_t nnzL;
     int_t *xsup = Glu_persist->xsup;
     int_t *index;
     float *nzval;
 	char filename[256];
-	FILE *fp, *fopen();
+	FILE *fp;
 	gridinfo_t *grid = &(grid3d->grid2d);
 	int iam = grid->iam;
 	int iam3d = grid3d->iam;
@@ -713,7 +713,7 @@ void psgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 			   sLUstruct_t *LUstruct, sSOLVEstruct_t *SOLVEstruct,
 			   float *berr, SuperLUStat_t *stat, int *info)
 {
-    NRformat_loc *Astore = A->Store;
+    NRformat_loc *Astore = (NRformat_loc *)A->Store;
     SuperMatrix GA; /* Global A in NC format */
     NCformat *GAstore;
     float *a_GA;
@@ -808,8 +808,8 @@ void psgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
     SOLVEstruct->A3d = A3d; /* This structure need to be persistent across
 				   multiple calls of psgssvx3d()   */
 
-    NRformat_loc *Astore0 = A3d->A_nfmt; // on all grids
-    NRformat_loc *A_orig = A->Store;
+    NRformat_loc *Astore0 = (NRformat_loc *)A3d->A_nfmt; // on all grids
+    NRformat_loc *A_orig = (NRformat_loc *)A->Store;
 //////
 
 #if (DEBUGlevel >= 1)
@@ -1080,7 +1080,7 @@ void psgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 		if (symb_comm != MPI_COMM_NULL)
 			MPI_Comm_free(&symb_comm);
 		if ( Fact != SamePattern_SameRowPerm){
-			LUstruct->trf3Dpart = SUPERLU_MALLOC(sizeof(dtrf3Dpartition_t));
+                        LUstruct->trf3Dpart = (strf3Dpartition_t *)SUPERLU_MALLOC(sizeof(strf3Dpartition_t));
 			// computes the new partition for 3D factorization here
 			trf3Dpartition=LUstruct->trf3Dpart;
 			snewTrfPartitionInit(nsupers, LUstruct, grid3d);
@@ -1142,7 +1142,7 @@ void psgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 			sinit3DLUstructForest(trf3Dpartition->myTreeIdxs, trf3Dpartition->myZeroTrIdxs,
 									trf3Dpartition->sForests, LUstruct, grid3d);
 
-			sLUValSubBuf_t *LUvsb = SUPERLU_MALLOC(sizeof(sLUValSubBuf_t));
+			sLUValSubBuf_t *LUvsb = (sLUValSubBuf_t *)SUPERLU_MALLOC(sizeof(sLUValSubBuf_t));
 			sLluBufInit(LUvsb, LUstruct);
 			trf3Dpartition->LUvsb = LUvsb;
 			trf3Dpartition->iperm_c_supno = create_iperm_c_supno(nsupers, options, LUstruct->Glu_persist, LUstruct->etree, LUstruct->Llu->Lrowind_bc_ptr, LUstruct->Llu->Ufstnz_br_ptr, grid3d);
@@ -2077,7 +2077,7 @@ if (grid3d->zscp.Iam == 0)  /* on 2D grid-0 */
 	if (nrhs > 0)
 		sScatter_B3d(A3d, grid3d);
 
-	B = A3d->B3d;		 // B is now assigned back to B3d on return
+	B = (float *)A3d->B3d;		 // B is now assigned back to B3d on return
 	A->Store = Astore3d; // restore Astore to 3D
 
 #if (DEBUGlevel >= 1)

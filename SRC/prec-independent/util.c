@@ -33,7 +33,7 @@ void Destroy_SuperMatrix_Store_dist(SuperMatrix *A)
 
 void Destroy_CompCol_Matrix_dist(SuperMatrix *A)
 {
-    NCformat *Astore = A->Store;
+    NCformat *Astore = (NCformat *)A->Store;
     SUPERLU_FREE(Astore->rowind);
     SUPERLU_FREE(Astore->colptr);
     if (Astore->nzval)
@@ -43,7 +43,7 @@ void Destroy_CompCol_Matrix_dist(SuperMatrix *A)
 
 void Destroy_CompRowLoc_Matrix_dist(SuperMatrix *A)
 {
-    NRformat_loc *Astore = A->Store;
+    NRformat_loc *Astore = (NRformat_loc *)A->Store;
     SUPERLU_FREE(Astore->rowptr);
     SUPERLU_FREE(Astore->colind);
     SUPERLU_FREE(Astore->nzval);
@@ -80,7 +80,7 @@ void Destroy_CompCol_Permuted_dist(SuperMatrix *A)
 /*! \brief A is of type Stype==DN */
 void Destroy_Dense_Matrix_dist(SuperMatrix *A)
 {
-    DNformat *Astore = A->Store;
+    DNformat *Astore = (DNformat *)A->Store;
     SUPERLU_FREE(Astore->nzval);
     SUPERLU_FREE(A->Store);
 }
@@ -168,8 +168,8 @@ int64_t
 fixupL_dist(const int_t n, const int_t *perm_r,
             Glu_persist_t *Glu_persist, Glu_freeable_t *Glu_freeable)
 {
-    register int_t nsuper, fsupc, nextl, i, j, k, jstrt;
-    register long long int lsub_size;
+    int_t nsuper, fsupc, nextl, i, j, k, jstrt;
+    long long int lsub_size;
     int_t *xsup, *lsub, *xlsub;
 
     if (n <= 1)
@@ -339,9 +339,9 @@ void print_panel_seg_dist(int_t n, int_t w, int_t jcol, int_t nseg,
 
 void PStatInit(SuperLUStat_t *stat)
 {
-    register int_t i;
+    int_t i;
 
-    if (!(stat->utime = SUPERLU_MALLOC(NPHASES * sizeof(double))))
+    if (!(stat->utime = (double *) SUPERLU_MALLOC(NPHASES * sizeof(double))))
         ABORT("Malloc fails for stat->utime[]");
     if (!(stat->ops = (flops_t *)SUPERLU_MALLOC(NPHASES * sizeof(flops_t))))
         ABORT("SUPERLU_MALLOC fails for stat->ops[]");
@@ -357,7 +357,7 @@ void PStatInit(SuperLUStat_t *stat)
 
 void PStatClear(SuperLUStat_t *stat)
 {
-    register int_t i;
+    int_t i;
 
     for (i = 0; i < NPHASES; ++i)
     {
@@ -550,7 +550,7 @@ void PStatFree(SuperLUStat_t *stat)
  */
 void ifill_dist(int_t *a, int_t alen, int_t ival)
 {
-    register int_t i;
+    int_t i;
     for (i = 0; i < alen; i++)
         a[i] = ival;
 }
@@ -604,7 +604,7 @@ static int max_sup_size;
 
 void super_stats_dist(int_t nsuper, int_t *xsup)
 {
-    register int nsup1 = 0;
+    int nsup1 = 0;
     int_t i, isize, whichb, bl, bh;
     int_t bucket[NBUCKS];
 
@@ -662,7 +662,7 @@ void check_repfnz_dist(int_t n, int_t w, int_t jcol, int_t *repfnz)
 
 void PrintInt10(char *name, int_t len, int_t *x)
 {
-    register int_t i;
+    int_t i;
 
     printf("%10s: len " IFMT, name, len);
     for (i = 0; i < len; ++i)
@@ -676,7 +676,7 @@ void PrintInt10(char *name, int_t len, int_t *x)
 
 void PrintInt32(char *name, int len, int *x)
 {
-    register int i;
+    int i;
 
     printf("%10s:", name);
     for (i = 0; i < len; ++i)
@@ -690,7 +690,7 @@ void PrintInt32(char *name, int len, int *x)
 
 int file_PrintInt10(FILE *fp, char *name, int_t len, int_t *x)
 {
-    register int_t i;
+    int_t i;
 
     fprintf(fp, "%10s:", name);
     for (i = 0; i < len; ++i)
@@ -705,7 +705,7 @@ int file_PrintInt10(FILE *fp, char *name, int_t len, int_t *x)
 
 int file_PrintInt32(FILE *fp, char *name, int len, int *x)
 {
-    register int i;
+    int i;
 
     fprintf(fp, "%10s:", name);
     for (i = 0; i < len; ++i)
@@ -720,7 +720,7 @@ int file_PrintInt32(FILE *fp, char *name, int len, int *x)
 
 int_t CheckZeroDiagonal(int_t n, int_t *rowind, int_t *colbeg, int_t *colcnt)
 {
-    register int_t i, j, zd, numzd = 0;
+    int_t i, j, zd, numzd = 0;
 
     for (j = 0; j < n; ++j)
     {
@@ -1302,7 +1302,7 @@ int_t **getTreePerm(int_t *myTreeIdxs, int_t *myZeroTrIdxs,
 {
     int_t maxLvl = log2i(grid3d->zscp.Np) + 1;
 
-    int_t **treePerm = SUPERLU_MALLOC(sizeof(int_t *) * maxLvl);
+    int_t **treePerm = (int_t **) SUPERLU_MALLOC(sizeof(int_t *) * maxLvl);
     for (int_t lvl = 0; lvl < maxLvl; lvl++)
     {
         // treePerm[lvl] = NULL;
@@ -1379,7 +1379,6 @@ int_t reduceStat(PhaseType PHASE,
 
 /*---- end from 3D code p3dcomm.c ----*/
 
-#define GPU_ACC
 #ifdef GPU_ACC
 
 #define GPUMM_MIN_K 64  // minimum size of k formatrix multiplication on GPUs

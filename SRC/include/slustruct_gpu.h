@@ -135,8 +135,11 @@ typedef struct //sluGPU_t_
 {
     //int gpuId;      // if there are multiple GPUs ( NOT USED )
     sLUstruct_gpu_t *A_gpu, *dA_gpu; // holds the LU structure on GPU
-    gpuStream_t funCallStreams[MAX_NGPU_STREAMS], CopyStream;
+    gpuStream_t funCallStreams[MAX_NGPU_STREAMS];
+    gpuStream_t CopyStream;
+    #ifndef HAVE_SYCL
     gpublasHandle_t gpublasHandles[MAX_NGPU_STREAMS];
+    #endif
     int lastOffloadStream[MAX_NGPU_STREAMS];
     int nGPUStreams;
     int* isNodeInMyGrid;

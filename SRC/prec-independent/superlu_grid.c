@@ -43,7 +43,7 @@ void superlu_gridinit(MPI_Comm Bcomm, /* The base communicator upon which
     int i, j, info;
 
     /* Make a list of the processes in the new communicator. */
-    usermap = SUPERLU_MALLOC(Np*sizeof(int));
+    usermap = (int *)SUPERLU_MALLOC(Np*sizeof(int));
     for (j = 0; j < npcol; ++j)
 	for (i = 0; i < nprow; ++i) usermap[j*nprow+i] = i*npcol+j;
     

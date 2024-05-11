@@ -11,6 +11,7 @@
 #include <nvml.h>
 #endif
 
+#ifdef HAVE_CUDA
 #undef CUDA_CHECK
 #define CUDA_CHECK(stmt)                                                          \
      do {                                                                          \
@@ -22,6 +23,7 @@
          }                                                                         \
          assert(cudaSuccess == result);                                            \
      } while (0)
+#endif
 
 #undef MPI_CHECK
 #define MPI_CHECK(stmt)                                 \
@@ -34,6 +36,7 @@
      }                                                   \
  } while (0)
 
+#ifdef HAVE_NVSHMEM
 #define NVSHMEM_CHECK(stmt)                               \
  do {                                                    \
      int result = (stmt);                                \
@@ -43,7 +46,7 @@
          exit(-1);                                       \
      }                                                   \
  } while (0)
-
+#endif
 
 
 // /*error reporting functions */
@@ -74,7 +77,10 @@ __device__ int dnextpow2(int v)
 }
 
 
-typedef int pfx_dtype ; 
+typedef int pfx_dtype ;
+#ifdef HAVE_SYCL
+SYCL_EXTERNAL
+#endif
 __device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n)
 {
     // extern __shared__ pfx_dtype temp[];
@@ -139,9 +145,10 @@ __global__ void gExScan(pfx_dtype *inArr, int n)
 #endif
 
 
-
+#ifndef HAVE_SYCL
 #ifdef __cplusplus
 extern "C" {
+#endif
 #endif
 
 #ifdef HAVE_CUDA
@@ -191,9 +198,9 @@ void nv_init_wrapper( MPI_Comm mpi_comm)
     //fflush(stdout);
     //simple_shift<<<1, 256>>>(target, mype, npes);
     //CUDA_CHECK(cudaDeviceSynchronize());
-#endif
+#endif // HAVE_NVSHMEM
 }
-#endif
+#endif // HAVE_CUDA
 
 
 // void nv_init_wrapper(int* c, char *v[], int* omp_mpi_level)
@@ -290,6 +297,8 @@ void nv_init_wrapper( MPI_Comm mpi_comm)
 
 // }
 
+#ifndef HAVE_SYCL
 #ifdef __cplusplus
 }
+#endif
 #endif

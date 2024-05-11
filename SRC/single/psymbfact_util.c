@@ -27,7 +27,7 @@ at the top-level directory.
 static void
 copy_mem_int(int_t howmany, int_t* old, int_t* new)
 {
-  register int_t i;
+  int_t i;
   for (i = 0; i < howmany; i++) new[i] = old[i];
 }
 

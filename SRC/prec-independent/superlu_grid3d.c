@@ -23,7 +23,7 @@ void superlu_gridinit3d(MPI_Comm Bcomm, /* The base communicator upon which
 		      to be placed in {i,j,k} of the new process (group) (3D grid).  */
 
     /* Make a list of the processes in the new communicator. */
-    usermap = SUPERLU_MALLOC(Np*sizeof(int));
+    usermap = (int *)SUPERLU_MALLOC(Np*sizeof(int));
     for (k = 0; k < npdep; ++k)
 	for (j = 0; j < npcol; ++j)
 	    for (i = 0; i < nprow; ++i)
@@ -83,7 +83,7 @@ void superlu_gridmap3d(
     MPI_Group mpi_base_group, superlu_grp;
     int Np = nprow * npcol * npdep, mycol, myrow;
     //int *pranks;
-    int i, j, info;
+    int info;
 
 #if 0 // older MPI doesn't support complex in C
     /* Create datatype in C for MPI complex. */

@@ -608,14 +608,14 @@ int dcheckLUFromDisk(int nsupers, int_t *xsup, dLUstruct_t *LUstruct)
 void dDumpLblocks3D(int_t nsupers, gridinfo3d_t *grid3d,
 		  Glu_persist_t *Glu_persist, dLocalLU_t *Llu)
 {
-    register int c, extra, gb, j, i, lb, nsupc, nsupr, len, nb, ncb;
+    int c, extra, gb, j, i, lb, nsupc, nsupr, len, nb, ncb;
     int k, mycol, r, n, nmax;
     int_t nnzL;
     int_t *xsup = Glu_persist->xsup;
     int_t *index;
     double *nzval;
 	char filename[256];
-	FILE *fp, *fopen();
+	FILE *fp;
 	gridinfo_t *grid = &(grid3d->grid2d);
 	int iam = grid->iam;
 	int iam3d = grid3d->iam;

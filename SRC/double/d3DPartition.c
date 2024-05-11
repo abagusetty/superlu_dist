@@ -52,7 +52,7 @@ void dnewTrfPartitionInit(int_t nsupers,  dLUstruct_t *LUstruct, gridinfo3d_t *g
     //                       sForests, LUstruct, grid3d);
     int_t *myNodeCount = getMyNodeCountsFr(maxLvl, myTreeIdxs, sForests);
     int_t **treePerm = getTreePermFr(myTreeIdxs, sForests, grid3d);
-    int* supernodeMask = SUPERLU_MALLOC(nsupers*sizeof(int));
+    int* supernodeMask = (int *)SUPERLU_MALLOC(nsupers*sizeof(int));
     for (int ii = 0; ii < nsupers; ++ii)
         supernodeMask[ii]=0;
     for (int lvl = 0; lvl < maxLvl; ++lvl)
@@ -68,7 +68,7 @@ void dnewTrfPartitionInit(int_t nsupers,  dLUstruct_t *LUstruct, gridinfo3d_t *g
 
 
 
-    // dLUValSubBuf_t *LUvsb = SUPERLU_MALLOC(sizeof(dLUValSubBuf_t));
+    // dLUValSubBuf_t *LUvsb = (dLUValSubBuf_t *)SUPERLU_MALLOC(sizeof(dLUValSubBuf_t));
     // dLluBufInit(LUvsb, LUstruct);
 
 #if (DEBUGlevel>=1)

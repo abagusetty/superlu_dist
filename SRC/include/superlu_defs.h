@@ -93,21 +93,11 @@ at the top-level directory.
 
 #include "superlu_dist_config.h"
 
-#ifdef HAVE_CUDA
-#define GPU_ACC
-//#include "cublas_utils.h"
-#endif
-
-#ifdef HAVE_HIP
-#ifndef GPU_ACC
-#define GPU_ACC
-#endif
-#endif
-
-#ifdef GPU_ACC
-#include "oneside.h"
 #include "gpu_api_utils.h"
-#endif
+/* #ifdef GPU_ACC */
+/* #include "oneside.h" */
+/* #include "gpu_api_utils.h" */
+/* #endif */
 
 
 /* Define my integer size int_t */

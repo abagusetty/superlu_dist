@@ -340,7 +340,7 @@ int_t sblock_gemm_scatterTopLeft( int_t lb, /* block number in L */
     //unsigned long long t1 = _rdtsc();
     double t1 = SuperLU_timer_();
     sblock_gemm_scatter( lb, j, HyP->Ublock_info, HyP->lookAhead_info,
-			HyP->lookAhead_L_buff, HyP->Lnbrow,
+                        (float *)HyP->lookAhead_L_buff, HyP->Lnbrow,
                         HyP->bigU_host, HyP->ldu,
                         bigV, knsupc,  klst, lsub,  usub, ldt, thread_id,
 			indirect, indirect2,
@@ -379,7 +379,7 @@ int_t sblock_gemm_scatterTopRight( int_t lb,  int_t j,
 #endif
     //unsigned long long t1 = _rdtsc();
     double t1 = SuperLU_timer_();
-    sblock_gemm_scatter( lb, j, HyP->Ublock_info_Phi, HyP->lookAhead_info, HyP->lookAhead_L_buff, HyP->Lnbrow,
+    sblock_gemm_scatter( lb, j, HyP->Ublock_info_Phi, HyP->lookAhead_info, (float *)HyP->lookAhead_L_buff, HyP->Lnbrow,
                         HyP->bigU_Phi, HyP->ldu_Phi,
                         bigV, knsupc,  klst, lsub,  usub, ldt, thread_id, indirect, indirect2,
                         Lrowind_bc_ptr, Lnzval_bc_ptr, Ufstnz_br_ptr, Unzval_br_ptr, xsup, grid, stat
@@ -417,7 +417,7 @@ int_t sblock_gemm_scatterBottomLeft( int_t lb,  int_t j,
     //printf("Thread's ID %lld \n", thread_id);
     //unsigned long long t1 = _rdtsc();
     double t1 = SuperLU_timer_();
-    sblock_gemm_scatter( lb, j, HyP->Ublock_info, HyP->Remain_info, HyP->Remain_L_buff, HyP->Rnbrow,
+    sblock_gemm_scatter( lb, j, HyP->Ublock_info, HyP->Remain_info, (float *)HyP->Remain_L_buff, HyP->Rnbrow,
                         HyP->bigU_host, HyP->ldu,
                         bigV, knsupc,  klst, lsub,  usub, ldt, thread_id, indirect, indirect2,
                         Lrowind_bc_ptr, Lnzval_bc_ptr, Ufstnz_br_ptr, Unzval_br_ptr, xsup, grid, stat
@@ -456,7 +456,7 @@ int_t sblock_gemm_scatterBottomRight( int_t lb,  int_t j,
    // printf("Thread's ID %lld \n", thread_id);
     //unsigned long long t1 = _rdtsc();
     double t1 = SuperLU_timer_();
-    sblock_gemm_scatter( lb, j, HyP->Ublock_info_Phi, HyP->Remain_info, HyP->Remain_L_buff, HyP->Rnbrow,
+    sblock_gemm_scatter( lb, j, HyP->Ublock_info_Phi, HyP->Remain_info, (float *)HyP->Remain_L_buff, HyP->Rnbrow,
                         HyP->bigU_Phi, HyP->ldu_Phi,
                         bigV, knsupc,  klst, lsub,  usub, ldt, thread_id, indirect, indirect2,
                         Lrowind_bc_ptr, Lnzval_bc_ptr, Ufstnz_br_ptr, Unzval_br_ptr, xsup, grid, stat

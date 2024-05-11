@@ -24,7 +24,7 @@ at the top-level directory.
 
 int file_dPrint_CompRowLoc_to_Triples(SuperMatrix *A)
 {
-    NRformat_loc *Astore = A->Store;
+    NRformat_loc *Astore = (NRformat_loc *)A->Store;
     int nnz, m, n, i, j;
     double  *dp;
     FILE *fp = fopen("CSR.txt", "w");
@@ -32,7 +32,7 @@ int file_dPrint_CompRowLoc_to_Triples(SuperMatrix *A)
     m = A->nrow;
     n = A->ncol;
     nnz = Astore->nnz_loc;
-    dp = Astore->nzval;
+    dp = (double *)Astore->nzval;
 
     printf("print to triples: m %d, n %d, nnz %d\n", m, n, nnz);
     for (i = 0; i < m; ++i) {
@@ -275,7 +275,7 @@ pdgssvx3d_csc_batch(
 	    Astore->rowind[i] = perm_c[Astore->rowind[i]];
 	
 	/* Convert to CSR format. */
-	dCompCol_to_CompRow_dist(m, n, Astore->nnz, Astore->nzval, Astore->colptr,
+	dCompCol_to_CompRow_dist(m, n, Astore->nnz, (double *)Astore->nzval, Astore->colptr,
 				 Astore->rowind, &nzval_d, &rowptr_d, &colind_d);
 
 	//PrintInt32("rowptr_d", m+1, rowptr_d);

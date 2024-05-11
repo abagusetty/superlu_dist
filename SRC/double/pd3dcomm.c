@@ -79,10 +79,10 @@ int_t dAllocLlu(int_t nsupers, dLUstruct_t * LUstruct, gridinfo3d_t* grid3d)
 
    // Sherry: use int type
                   /* Recv from no one (0), left (1), and up (2).*/
-    int *ToRecv = SUPERLU_MALLOC(nsupers * sizeof(int));
+    int *ToRecv = (int *)SUPERLU_MALLOC(nsupers * sizeof(int));
     for (i = 0; i < nsupers; ++i) ToRecv[i] = 0;
                   /* Whether need to send down block row. */
-    int *ToSendD = SUPERLU_MALLOC(nbr * sizeof(int));
+    int *ToSendD = (int *)SUPERLU_MALLOC(nbr * sizeof(int));
     for (i = 0; i < nbr; ++i) ToSendD[i] = 0;
                   /* List of processes to send right block col. */
     int **ToSendR = (int **) SUPERLU_MALLOC(nbc * sizeof(int*));
@@ -91,7 +91,7 @@ int_t dAllocLlu(int_t nsupers, dLUstruct_t * LUstruct, gridinfo3d_t* grid3d)
 	{
 	    /* code */
 	    //ToSendR[i] = INT_T_ALLOC(Pc);
-	    ToSendR[i] = SUPERLU_MALLOC(Pc * sizeof(int));
+            ToSendR[i] = (int *)SUPERLU_MALLOC(Pc * sizeof(int));
 	}
 
     /*now setup the pointers*/
@@ -430,8 +430,8 @@ int_t dp3dScatter(int_t n, dLUstruct_t * LUstruct, gridinfo3d_t* grid3d, int *su
     {
         // Llu->Ucb_indptr = SUPERLU_MALLOC (nub * sizeof(Ucb_indptr_t*));
         // Llu->Ucb_valptr = SUPERLU_MALLOC (nub * sizeof(int_t*));
-        Llu->bsendx_plist = SUPERLU_MALLOC (nub * sizeof(int*));
-        Llu->fsendx_plist = SUPERLU_MALLOC (nub * sizeof(int*));
+        Llu->bsendx_plist = (int **)SUPERLU_MALLOC (nub * sizeof(int*));
+        Llu->fsendx_plist = (int **)SUPERLU_MALLOC (nub * sizeof(int*));
 
 	#if 0
 		for(int lk=0; lk<nub; lk++){
@@ -468,9 +468,9 @@ int_t dp3dScatter(int_t n, dLUstruct_t * LUstruct, gridinfo3d_t* grid3d, int *su
 		SUPERLU_FREE(Llu->Unnz);
 	}
 
-	Ucb_indptr = SUPERLU_MALLOC (nub * sizeof(Ucb_indptr_t*));
-	Ucb_valptr = SUPERLU_MALLOC (nub * sizeof(int_t*));
-	Unnz = SUPERLU_MALLOC (nub * sizeof(int_t));
+	Ucb_indptr = (Ucb_indptr_t **)SUPERLU_MALLOC (nub * sizeof(Ucb_indptr_t*));
+	Ucb_valptr = (int_t **)SUPERLU_MALLOC (nub * sizeof(int_t*));
+	Unnz = (int_t *)SUPERLU_MALLOC (nub * sizeof(int_t));
 
 	if ( !(Urbs = (int_t *) intCalloc_dist(2*nub)) )
 		ABORT("Malloc fails for Urbs[]"); /* Record number of nonzero
@@ -497,7 +497,7 @@ int_t dp3dScatter(int_t n, dLUstruct_t * LUstruct, gridinfo3d_t* grid3d, int *su
 	for (int_t lb = 0; lb < nub; ++lb) {
 		if ( Urbs[lb] ) { /* Not an empty block column. */
 			if ( !(Ucb_indptr[lb]
-						= SUPERLU_MALLOC(Urbs[lb] * sizeof(Ucb_indptr_t))) )
+                               = (Ucb_indptr_t *)SUPERLU_MALLOC(Urbs[lb] * sizeof(Ucb_indptr_t))) )
 				ABORT("Malloc fails for Ucb_indptr[lb][]");
 			if ( !(Ucb_valptr[lb] = (int_t *) intMalloc_dist(Urbs[lb])) )
 				ABORT("Malloc fails for Ucb_valptr[lb][]");

@@ -286,7 +286,7 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
 #endif
 
             /* look for the first off-diagonal blocks */
-            etree_supno = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+            etree_supno = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
             for ( i = 0; i < nsupers; i++ ) etree_supno[i] = nsupers;
             for ( j = 0, lb = 0; lb < nsupers; lb++ )
             {
@@ -307,7 +307,7 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
 #endif
 
             /* find the first block in each supernodal-column of local L-factor */
-            etree_supno_l = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+            etree_supno_l = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
             for ( i = 0; i < nsupers; i++ ) etree_supno_l[i] = nsupers;
             for ( lb = 0; lb < ncb; lb++ )
             {
@@ -368,13 +368,13 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
             }
 
             /* form global e-tree */
-            etree_supno = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+            etree_supno = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
             MPI_Allreduce( etree_supno_l, etree_supno, nsupers, mpi_int_t, MPI_MIN, grid->comm );
             SUPERLU_FREE(etree_supno_l);
         }
 
         /* initialize the num of child for each node */
-        num_child = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+        num_child = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
         for ( i = 0; i < nsupers; i++ ) num_child[i] = 0;
         for ( i = 0; i < nsupers; i++ ) if ( etree_supno[i] != nsupers ) num_child[etree_supno[i]] ++;
 
@@ -384,7 +384,7 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
         {
             if ( num_child[i] == 0 )
             {
-                ptr = SUPERLU_MALLOC( sizeof(etree_node) );
+                ptr = (etree_node *)SUPERLU_MALLOC( sizeof(etree_node) );
                 ptr->id = i;
                 ptr->next = NULL;
                 /*printf( " == push leaf %d (%d) ==\n",i,nnodes );*/
@@ -405,11 +405,11 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
 
         /* process fifo queue, and compute the ordering */
         i = 0;
-        perm_c_supno  = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+        perm_c_supno  = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
         while ( nnodes > 0 )
         {
             ptr = head;  j = ptr->id;
-            head = ptr->next;
+            head = (etree_node *)ptr->next;
             perm_c_supno[i] = j;
             SUPERLU_FREE(ptr);
             i++; nnodes --;
@@ -421,7 +421,7 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
                 {
                     nnodes ++;
 
-                    ptr = SUPERLU_MALLOC( sizeof(etree_node) );
+                    ptr = (etree_node *)SUPERLU_MALLOC( sizeof(etree_node) );
                     ptr->id = etree_supno[j];
                     ptr->next = NULL;
 
@@ -451,7 +451,7 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
         int nrbp1 = nrb + 1;
 
         /* allocate some workspace */
-        if ( !(sendcnts = SUPERLU_MALLOC( (4 + 2 * nrbp1) * Pr * Pc * sizeof(int))) )
+        if ( !(sendcnts = (int *)SUPERLU_MALLOC( (4 + 2 * nrbp1) * Pr * Pc * sizeof(int))) )
             ABORT("Malloc fails for sendcnts[].");
         sdispls  = &sendcnts[Pr * Pc];
         recvcnts = &sdispls [Pr * Pc];
@@ -934,7 +934,7 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
                         recvbuf, recvcnts, rdispls, mpi_int_t, grid->comm );
         SUPERLU_FREE(edag_supno_l);
 
-        if ( !(edag_supno = SUPERLU_MALLOC( nsupers * sizeof(int_t*) )) )
+        if ( !(edag_supno = (int_t **)SUPERLU_MALLOC( nsupers * sizeof(int_t*) )) )
             ABORT("Malloc fails for edag_supno[].");
         k = 0;
         for ( lb = 0; lb < nsupers; lb++ ) nnodes_l[lb] = 0;
@@ -1022,7 +1022,7 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
                         recvbuf, recvcnts, rdispls, mpi_int_t, grid->comm );
         SUPERLU_FREE(edag_supno_l);
 
-        if ( !(edag_supno = SUPERLU_MALLOC( nsupers * sizeof(int_t*) )) )
+        if ( !(edag_supno = (int_t **)SUPERLU_MALLOC( nsupers * sizeof(int_t*) )) )
             ABORT("Malloc fails for edag_supno[].");
         k = 0;
         for ( lb = 0; lb < nsupers; lb++ ) nnodes_l[lb] = 0;
@@ -1073,7 +1073,7 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
 #endif
 
         /* initialize the num of child for each node */
-        num_child = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+        num_child = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
         for ( i = 0; i < nsupers; i++ ) num_child[i] = 0;
         for ( i = 0; i < nsupers; i++ )
         {
@@ -1089,7 +1089,7 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
         {
             if ( num_child[i] == 0 )
             {
-                ptr = SUPERLU_MALLOC( sizeof(etree_node) );
+              ptr = (etree_node *)SUPERLU_MALLOC( sizeof(etree_node) );
                 ptr->id = i;
                 ptr->next = NULL;
                 /*printf( " == push leaf %d (%d) ==\n",i,nnodes );*/
@@ -1110,13 +1110,13 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
 
         /* process fifo queue, and compute the ordering */
         i = 0;
-        perm_c_supno  = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+        perm_c_supno  = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
         while ( nnodes > 0 )
         {
 
             /*printf( "=== pop %d (%d) ===\n",head->id,i );*/
             ptr = head;  j = ptr->id;
-            head = ptr->next;
+            head = (etree_node *)ptr->next;
 
             perm_c_supno[i] = j;
             SUPERLU_FREE(ptr);
@@ -1129,7 +1129,7 @@ int_t* getPerm_c_supno(int_t nsupers, superlu_dist_options_t *options,
                 {
                     nnodes ++;
 
-                    ptr = SUPERLU_MALLOC( sizeof(etree_node) );
+                    ptr = (etree_node *)SUPERLU_MALLOC( sizeof(etree_node) );
                     ptr->id = edag_supno[j][jb];
                     ptr->next = NULL;
 
@@ -1231,7 +1231,7 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
 #endif
 
             /* look for the first off-diagonal blocks */
-            etree_supno = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+            etree_supno = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
             for ( i = 0; i < nsupers; i++ ) etree_supno[i] = nsupers;
             for ( j = 0, lb = 0; lb < nsupers; lb++ )
             {
@@ -1253,7 +1253,7 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
 #endif
 
             /* find the first block in each supernodal-column of local L-factor */
-            etree_supno_l = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+            etree_supno_l = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
             for ( i = 0; i < nsupers; i++ ) etree_supno_l[i] = nsupers;
             for ( lb = 0; lb < ncb; lb++ )
             {
@@ -1314,13 +1314,13 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
             }
 
             /* form global e-tree */
-            etree_supno = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+            etree_supno = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
             MPI_Allreduce( etree_supno_l, etree_supno, nsupers, mpi_int_t, MPI_MIN, grid->comm );
             SUPERLU_FREE(etree_supno_l);
         }
 
         /* initialize the num of child for each node */
-        num_child = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+        num_child = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
         for ( i = 0; i < nsupers; i++ ) num_child[i] = 0;
         for ( i = 0; i < nsupers; i++ ) if ( etree_supno[i] != nsupers ) num_child[etree_supno[i]] ++;
 
@@ -1330,7 +1330,7 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
         {
             if ( num_child[i] == 0 )
             {
-                ptr = SUPERLU_MALLOC( sizeof(etree_node) );
+              ptr = (etree_node *)SUPERLU_MALLOC( sizeof(etree_node) );
                 ptr->id = i;
                 ptr->next = NULL;
                 /*printf( " == push leaf %d (%d) ==\n",i,nnodes );*/
@@ -1351,11 +1351,11 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
 
         /* process fifo queue, and compute the ordering */
         i = 0;
-        perm_c_supno  = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+        perm_c_supno  = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
         while ( nnodes > 0 )
         {
             ptr = head;  j = ptr->id;
-            head = ptr->next;
+            head = (etree_node *)ptr->next;
             perm_c_supno[i] = j;
             SUPERLU_FREE(ptr);
             i++; nnodes --;
@@ -1367,7 +1367,7 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
                 {
                     nnodes ++;
 
-                    ptr = SUPERLU_MALLOC( sizeof(etree_node) );
+                    ptr = (etree_node *)SUPERLU_MALLOC( sizeof(etree_node) );
                     ptr->id = etree_supno[j];
                     ptr->next = NULL;
 
@@ -1397,7 +1397,7 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
         int nrbp1 = nrb + 1;
 
         /* allocate some workspace */
-        if ( !(sendcnts = SUPERLU_MALLOC( (4 + 2 * nrbp1) * Pr * Pc * sizeof(int))) )
+        if ( !(sendcnts = (int *)SUPERLU_MALLOC( (4 + 2 * nrbp1) * Pr * Pc * sizeof(int))) )
             ABORT("Malloc fails for sendcnts[].");
         sdispls  = &sendcnts[Pr * Pc];
         recvcnts = &sdispls [Pr * Pc];
@@ -2031,7 +2031,7 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
                         recvbuf, recvcnts, rdispls, mpi_int_t, grid->comm );
         SUPERLU_FREE(edag_supno_l);
 
-        if ( !(edag_supno = SUPERLU_MALLOC( nsupers * sizeof(int_t*) )) )
+        if ( !(edag_supno = (int_t **)SUPERLU_MALLOC( nsupers * sizeof(int_t*) )) )
             ABORT("Malloc fails for edag_supno[].");
         k = 0;
         for ( lb = 0; lb < nsupers; lb++ ) nnodes_l[lb] = 0;
@@ -2119,7 +2119,7 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
                         recvbuf, recvcnts, rdispls, mpi_int_t, grid->comm );
         SUPERLU_FREE(edag_supno_l);
 
-        if ( !(edag_supno = SUPERLU_MALLOC( nsupers * sizeof(int_t*) )) )
+        if ( !(edag_supno = (int_t **)SUPERLU_MALLOC( nsupers * sizeof(int_t*) )) )
             ABORT("Malloc fails for edag_supno[].");
         k = 0;
         for ( lb = 0; lb < nsupers; lb++ ) nnodes_l[lb] = 0;
@@ -2170,7 +2170,7 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
 #endif
 
         /* initialize the num of child for each node */
-        num_child = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+        num_child = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
         for ( i = 0; i < nsupers; i++ ) num_child[i] = 0;
         for ( i = 0; i < nsupers; i++ )
         {
@@ -2186,7 +2186,7 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
         {
             if ( num_child[i] == 0 )
             {
-                ptr = SUPERLU_MALLOC( sizeof(etree_node) );
+                ptr = (etree_node *)SUPERLU_MALLOC( sizeof(etree_node) );
                 ptr->id = i;
                 ptr->next = NULL;
                 /*printf( " == push leaf %d (%d) ==\n",i,nnodes );*/
@@ -2207,13 +2207,13 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
 
         /* process fifo queue, and compute the ordering */
         i = 0;
-        perm_c_supno  = SUPERLU_MALLOC( nsupers * sizeof(int_t) );
+        perm_c_supno  = (int_t *)SUPERLU_MALLOC( nsupers * sizeof(int_t) );
         while ( nnodes > 0 )
         {
 
             /*printf( "=== pop %d (%d) ===\n",head->id,i );*/
             ptr = head;  j = ptr->id;
-            head = ptr->next;
+            head = (etree_node *)ptr->next;
 
             perm_c_supno[i] = j;
             SUPERLU_FREE(ptr);
@@ -2226,7 +2226,7 @@ int_t* getPerm_c_supno_allgrid(int_t nsupers, superlu_dist_options_t *options,
                 {
                     nnodes ++;
 
-                    ptr = SUPERLU_MALLOC( sizeof(etree_node) );
+                    ptr = (etree_node *)SUPERLU_MALLOC( sizeof(etree_node) );
                     ptr->id = edag_supno[j][jb];
                     ptr->next = NULL;
 
@@ -2805,7 +2805,7 @@ int_t* create_iperm_c_supno(int_t nsupers, superlu_dist_options_t *options,
 
 int_t *createSupernode2TreeMap(int_t nsupers, int_t maxLvl, int_t *gNodeCount, int_t **gNodeLists)
 {
-    int_t *supernode2treeMap = SUPERLU_MALLOC(nsupers * sizeof(int_t));
+    int_t *supernode2treeMap = (int_t *)SUPERLU_MALLOC(nsupers * sizeof(int_t));
     int_t numForests = (1 << maxLvl) - 1;
 
     for (int_t Fr = 0; Fr < numForests; ++Fr)
@@ -2822,7 +2822,7 @@ int_t *createSupernode2TreeMap(int_t nsupers, int_t maxLvl, int_t *gNodeCount, i
 SupernodeToGridMap_t* createSuperGridMap(int_t nsuper,int_t maxLvl, int_t *myTreeIdxs, 
     int_t *myZeroTrIdxs, int_t* gNodeCount, int_t** gNodeLists)
 {
-    SupernodeToGridMap_t* superGridMap = SUPERLU_MALLOC(nsuper * sizeof(SupernodeToGridMap_t));
+    SupernodeToGridMap_t* superGridMap = (SupernodeToGridMap_t *)SUPERLU_MALLOC(nsuper * sizeof(SupernodeToGridMap_t));
     for (int_t i = 0; i < nsuper; ++i)
     {
         /* initialize with NOT_IN_GRID */

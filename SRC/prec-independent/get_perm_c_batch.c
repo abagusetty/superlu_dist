@@ -51,7 +51,7 @@ get_perm_c_batch(
 
     /* Decipher the input matrices */
     SuperMatrix **A;
-    A = SUPERLU_MALLOC(batchCount * sizeof(SuperMatrix *));
+    A = (SuperMatrix **)SUPERLU_MALLOC(batchCount * sizeof(SuperMatrix *));
     for (int d = 0; d < batchCount; ++d) {
 	A[d] = (SuperMatrix *) SparseMatrix_handles[d];
     }

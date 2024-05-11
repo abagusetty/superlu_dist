@@ -52,7 +52,7 @@ void snewTrfPartitionInit(int_t nsupers,  sLUstruct_t *LUstruct, gridinfo3d_t *g
     //                       sForests, LUstruct, grid3d);
     int_t *myNodeCount = getMyNodeCountsFr(maxLvl, myTreeIdxs, sForests);
     int_t **treePerm = getTreePermFr(myTreeIdxs, sForests, grid3d);
-    int* supernodeMask = SUPERLU_MALLOC(nsupers*sizeof(int));
+    int* supernodeMask = (int *)SUPERLU_MALLOC(nsupers*sizeof(int));
     for (int ii = 0; ii < nsupers; ++ii)
         supernodeMask[ii]=0;
     for (int lvl = 0; lvl < maxLvl; ++lvl)

@@ -10,24 +10,25 @@ at the top-level directory.
 */
 #include "superlu_defs.h"
 
-#ifdef GPU_ACC  // enable CUDA
+#ifdef GPU_ACC
 
 #include <stdio.h>
-#include "gpu_api_utils.h"
+
  void DisplayHeader()
 {
     const int kb = 1024;
     const int mb = kb * kb;
-    int version;
-    // cout << "NBody.GPU" << endl << "=========" << endl << endl;
     
-    gpuRuntimeGetVersion( &version ); 
-    printf("GPU Driver version:   v %d\n",version);
-    //cout << "Thrust version: v" << THRUST_MAJOR_VERSION << "." << THRUST_MINOR_VERSION << endl << endl; 
+    printf( "GPU Devices: \n \n");
 
+    #if defined(HAVE_CUDA) || defined(HAVE_HIP)
     int devCount;
     gpuGetDeviceCount(&devCount);
-    printf( "GPU Devices: \n \n"); 
+
+    int version;
+    gpuRuntimeGetVersion( &version );
+    printf("GPU Driver version:   v %d\n",version);
+    //cout << "Thrust version: v" << THRUST_MAJOR_VERSION << "." << THRUST_MINOR_VERSION << endl << endl;
 
     for(int i = 0; i < devCount; ++i)
     {
@@ -57,8 +58,24 @@ at the top-level directory.
         // cout << "  Max grid dimensions:  [ " << props.maxGridSize[0] << ", " << props.maxGridSize[1]  << ", " << props.maxGridSize[2] << " ]" << endl;
         // cout << endl;
     }
+
+    #elif defined(HAVE_SYCL)
+
+    sycl::device dev;
+    std::string sycl_backend = ((dev.get_platform().get_backend() == sycl::backend::ext_oneapi_level_zero) ? "Level-zero"
+                                : ((dev.get_platform().get_backend() == sycl::backend::ext_oneapi_cuda) ? "CUDA"
+                                 : ((dev.get_platform().get_backend() == sycl::backend::ext_oneapi_hip) ? "HIP"
+                                    : "Invalid backend")));
+    std::cout << dev.get_info<sycl::info::device::name>() << ", " << sycl_backend << " Driver version: " <<  dev.get_info<sycl::info::device::driver_version>() << std::endl;
+    printf("  Global memory:   %ld mb \n", dev.get_info<sycl::info::device::global_mem_size>() / mb);
+    printf("  Shared memory:   %ld kb \n", dev.get_info<sycl::info::device::local_mem_size>() / kb );
+
+    #endif
 }
 
+
+// NOTE: the following functions are only defined for CUDA, HIP backend only
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
 
 const char* gpublasGetErrorString(gpublasStatus_t status)
 {
@@ -163,5 +180,6 @@ void printGPUStats(int nsupers, SuperLUStat_t *stat, gridinfo3d_t *grid3d )
     }
 } /* end printGPUStats */
 
+#endif // HAVE_CUDA, HAVE_HIP
 
-#endif  // enable GPU
+#endif  // enable GPU_ACC

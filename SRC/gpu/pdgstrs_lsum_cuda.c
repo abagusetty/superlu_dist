@@ -58,10 +58,15 @@ at the top-level directory.
 #include <nvml.h>
 #endif
 
+#ifndef HAVE_SYCL
 #ifdef __cplusplus
 extern "C" {
 #endif
+#endif
 
+#ifdef HAVE_SYCL
+using sycl::min;
+#endif
 
 // #define USESHARE1RHS 1
 
@@ -201,7 +206,11 @@ void gemm_device_dlsum_fmod(
         const double* __restrict__ A, int LDA,
         const double* __restrict__ B, int LDB,
         double rC[THR_N][THR_M],
-        double alpha, double beta)
+        double alpha, double beta
+#ifdef HAVE_SYCL
+        , sycl::nd_item<3> item
+#endif
+                            )
 {
     // #if (__CUDA_ARCH__ >= 200)
     int idx = threadIdx_x;  // thread's m dimension
@@ -218,8 +227,17 @@ void gemm_device_dlsum_fmod(
     // int blx = blockIdx_x;   // block's m dimension
     // int bly = blockIdx_y;   // block's n dimension
 
+    #ifdef HAVE_SYCL
+    sycl::group wrk_grp = item.get_group();
+    using tileA_t = double[BLK_K][BLK_M+1];
+    tileA_t& sA = *sycl::ext::oneapi::group_local_memory_for_overwrite<tileA_t>(wrk_grp);
+
+    using tileB_t = double[BLK_N][BLK_K+1];
+    tileB_t& sB = *sycl::ext::oneapi::group_local_memory_for_overwrite<tileB_t>(wrk_grp);
+    #else
     __shared__ double sA[BLK_K][BLK_M+1];      // +1 only required if A is transposed
     __shared__ double sB[BLK_N][BLK_K+1];      // +1 always required
+    #endif
 
     // Registers for the innermost loop
     double rA[THR_M];
@@ -420,7 +438,11 @@ void gemm_device_dlsum_bmod_stridedB(
         const double* __restrict__ B, int LDB,
         double rC[THR_N][THR_M],
         double alpha, double beta,
-        int_t lptr, int_t rel, int_t *usub)
+        int_t lptr, int_t rel, int_t *usub
+  #ifdef HAVE_SYCL
+  , sycl::nd_item<3> item
+  #endif
+                                     )
 {
     // #if (__CUDA_ARCH__ >= 200)
     int idx = threadIdx_x;  // thread's m dimension
@@ -437,8 +459,16 @@ void gemm_device_dlsum_bmod_stridedB(
     // int blx = blockIdx_x;   // block's m dimension
     // int bly = blockIdx_y;   // block's n dimension
 
+    #ifdef HAVE_SYCL
+    sycl::group wrk_grp = item.get_group();
+    using tileA_t = double[BLK_K][BLK_M+1];
+    tileA_t& sA = *sycl::ext::oneapi::group_local_memory_for_overwrite<tileA_t>(wrk_grp);
+    using tileB_t = double[BLK_N][BLK_K+1];
+    tileB_t& sB = *sycl::ext::oneapi::group_local_memory_for_overwrite<tileB_t>(wrk_grp);
+    #else
     __shared__ double sA[BLK_K][BLK_M+1];      // +1 only required if A is transposed
     __shared__ double sB[BLK_N][BLK_K+1];      // +1 always required
+    #endif
 
     // Registers for the innermost loop
     double rA[THR_M];
@@ -574,17 +604,9 @@ void gemm_device_dlsum_bmod_stridedB(
 }
 
 
-#define cudaCheckError() { \
-    cudaError_t e=cudaGetLastError();                           \
-    if(e!=cudaSuccess) {                       \
-        printf("Cuda failure %s:%d: '%s'\n",__FILE__,__LINE__,cudaGetErrorString(e));                           \
-        exit(EXIT_FAILURE);                   \
-    }                       \
-}
-
 #if 0
 __global__ void simple_shift(int *target, int mype, int npes) {
-    int tid = threadIdx.x;
+    int tid = threadIdx_x;
     for (int i=tid; i<256;i=i+256){
         target[i]=i;
         printf("(%d,%d), val=%d\n",mype,tid,i);
@@ -827,6 +849,9 @@ __device__ void dC_RdTree_forwardMessageSimple_Device(C_Tree* Tree, volatile uin
 //}
 
 
+// AB: Following methods: dwait_bcrd(), dwait_bcrd_u(), dlsum_fmod_inv_gpu_mrhs_nvshmem() were only implemented for NVSHMEM (guard with appropriate macros accordingly) such that HIP and SYCL backends wont compile them
+#ifdef HAVE_NVSHMEM
+
 // Yang/Nan. Note that NVSHMEM-based SpTRSV has only been tested on Perlmutter and Summit. Here is the status of the code on the two mahchines:
 // On Perlmutter:
 //      #ifdef _USE_SUMMIT: hangs for any Px*Py>1 configuration
@@ -873,9 +898,9 @@ __global__ void dwait_bcrd
                 int_t  nsupers
         ) {
 #ifdef HAVE_NVSHMEM
-    int bid = blockIdx.x;
-//int global_id= blockIdx.x * blockDim.x * blockDim.y + threadIdx.x + threadIdx.y * blockDim.x;
-    int tid = threadIdx.x + threadIdx.y * blockDim.x;
+    int bid = blockIdx_x;
+//int global_id= blockIdx_x * blockDim_x * blockDim_y + threadIdx_x + threadIdx_y * blockDim_x;
+    int tid = threadIdx_x + threadIdx_y * blockDim_x;
     int WAIT_NUM_THREADS = d_nfrecv[1]; //*d_nfrecv[2];
 //if (tid==0) printf("(%d) WAIT_NUM_THREADS=%d,tot_wait_col=%d\n",mype,WAIT_NUM_THREADS,d_nfrecv[0]);
 #ifdef _USE_SUMMIT
@@ -1171,7 +1196,7 @@ __global__ void dwait_bcrd
    }
 #if 0
     if (bid==2){
-        int tot_threads=blockDim.x * blockDim.y;
+        int tot_threads=blockDim_x * blockDim_y;
         //if (tid==0){
         //    printf("iam=%d, len=%d, tot_threads=%d\n",mype,d_nfrecvmod[3],tot_threads);
         //}
@@ -1313,9 +1338,9 @@ __global__ void dwait_bcrd_u
                 int_t  nsupers
         ) {
 #ifdef HAVE_NVSHMEM
-    int bid = blockIdx.x;
-//int global_id= blockIdx.x * blockDim.x * blockDim.y + threadIdx.x + threadIdx.y * blockDim.x;
-    int tid = threadIdx.x + threadIdx.y * blockDim.x;
+    int bid = blockIdx_x;
+//int global_id= blockIdx_x * blockDim_x * blockDim_y + threadIdx_x + threadIdx_y * blockDim_x;
+    int tid = threadIdx_x + threadIdx_y * blockDim_x;
     int WAIT_NUM_THREADS = d_nfrecv[1]; //*d_nfrecv[2];
     #ifdef _USE_SUMMIT
     if (bid <4) { // for BC recv
@@ -1609,7 +1634,7 @@ __global__ void dwait_bcrd_u
     }
 #if 0
     if (bid==2){
-        int tot_threads=blockDim.x * blockDim.y;
+        int tot_threads=blockDim_x * blockDim_y;
         //if (tid==0){
         //    printf("iam=%d, len=%d, tot_threads=%d\n",mype,d_nfrecvmod[3],tot_threads);
         //}
@@ -1745,7 +1770,7 @@ int blockReduceSum(int val, int bid, int tid, int mype) {
     __syncthreads();              // Wait for all partial reductions
 
 //read from shared memory only if that warp existed
-    val = (tid < (blockDim.x * blockDim.y) / warpSize) ? shared[lane] : 0;
+    val = (tid < (blockDim_x * blockDim_y) / warpSize) ? shared[lane] : 0;
 
     if (wid==0) val = warpReduceSum(val); //Final reduce within first warp
 
@@ -1777,12 +1802,12 @@ __inline__ __device__  int blockReduceMin(int val,int bid, int tid, int mype)
     __syncthreads();              // Wait for all partial reductions
 
 //read from shared memory only if that warp existed
-    val = (tid < (blockDim.x * blockDim.y) / warpSize) ? shared[lane] : INT_MAX;
+    val = (tid < (blockDim_x * blockDim_y) / warpSize) ? shared[lane] : INT_MAX;
 
     if (wid == 0)  warpReduceMin(val); //Final reduce within first warp
     return val;
 }
-#endif
+#endif // HAVE_CUDA
 
 /************************************************************************/
 /*! \brief
@@ -2194,6 +2219,8 @@ __global__ void dlsum_fmod_inv_gpu_mrhs_nvshmem
 
 } /* dlsum_fmod_inv_gpu_mrhs_nvshmem */
 
+#endif // HAVE_NVSHMEM, look at the comment from AB, regarding guarding the NVSHMEM related functions
+
 __global__ void dlsum_fmod_inv_gpu_mrhs
 /************************************************************************/
 (
@@ -2219,6 +2246,9 @@ __global__ void dlsum_fmod_inv_gpu_mrhs
  int_t *xsup,
  int *bcols_masked,
  gridinfo_t *grid
+#ifdef HAVE_SYCL
+ , sycl::nd_item<3> item
+#endif
 )
 {
     double zero = 0.0, alpha = 1.0, beta = 0.0;
@@ -2384,7 +2414,11 @@ __global__ void dlsum_fmod_inv_gpu_mrhs
                             for (int bly = 0; bly*BLK_N < nrhs; bly++){
                                 gemm_device_dlsum_fmod(knsupc, nrhs, knsupc, blx, bly,
                                 Linv, knsupc, &x[ii], knsupc, rC,
-                                alpha, beta);
+                                alpha, beta
+#ifdef HAVE_SYCL
+                                                       , item
+#endif
+                                                       );
                                     #pragma unroll
                                 for (ni = 0; ni < THR_N; ni++) {
                                     int coord_dCn = bly*BLK_N + ni*DIM_Y + idy;
@@ -2549,7 +2583,11 @@ __global__ void dlsum_fmod_inv_gpu_mrhs
                                 for (int bly = 0; bly*BLK_N < nrhs; bly++){
                                     gemm_device_dlsum_fmod(nbrow1, nrhs, knsupc, blx, bly,
                                     &lusup[luptr_tmp1], nsupr, &x[ii], knsupc, rC,
-                                    alpha, beta);
+                                    alpha, beta
+#ifdef HAVE_SYCL
+                                                           , item
+#endif
+                                                           );
                                         #pragma unroll
                                     for (ni = 0; ni < THR_N; ni++) {
                                         int coord_dCn = bly*BLK_N + ni*DIM_Y + idy;
@@ -2621,6 +2659,9 @@ __global__ void dlsum_fmod_inv_gpu_1rhs_warp
  int_t *xsup,
  int *bcols_masked,
  gridinfo_t *grid
+#ifdef HAVE_SYCL
+ , sycl::nd_item<3> item
+#endif
 )
 {
     double zero = 0.0;
@@ -2931,11 +2972,31 @@ void dlsum_fmod_inv_gpu_wrap
     #else
         if(1){
     #endif
+            #ifdef HAVE_SYCL
+            sycl::range<3> dimBlock(1, nthread_y, nthread_x);
+            sycl::range<3> dimGrid(1, 1, nbcol_loc);
+            auto global = dimGrid * dimBlock;
+            sycl_get_queue()->parallel_for<class dlsum_fmod_inv_gpu_mrhs_kernel>
+              (sycl::nd_range<3>(global, dimBlock), [=] (sycl::nd_item<3> item) {
+                dlsum_fmod_inv_gpu_mrhs(nbcol_loc,nblock_ex,lsum,x,nrhs,maxsup,nsupers,fmod,LBtree_ptr,LRtree_ptr,ilsum,Lrowind_bc_dat,Lrowind_bc_offset,Lnzval_bc_dat,Lnzval_bc_offset,Linv_bc_dat,Linv_bc_offset,Lindval_loc_bc_dat,Lindval_loc_bc_offset, xsup,bcols_masked, grid, item);
+              });
+            #else
             dim3 dimBlock(nthread_x, nthread_y);
             dlsum_fmod_inv_gpu_mrhs<<< nbcol_loc, dimBlock >>>(nbcol_loc,nblock_ex,lsum,x,nrhs,maxsup,nsupers,fmod,LBtree_ptr,LRtree_ptr,ilsum,Lrowind_bc_dat,Lrowind_bc_offset,Lnzval_bc_dat,Lnzval_bc_offset,Linv_bc_dat,Linv_bc_offset,Lindval_loc_bc_dat,Lindval_loc_bc_offset, xsup,bcols_masked, grid);
+            #endif // HAVE_SYCL
         }else{
+            #ifdef HAVE_SYCL
+            sycl::range<3> dimBlock(1, nthread_y, nthread_x);
+            sycl::range<3> dimGrid(1, 1, CEILING(nbcol_loc,NWARP));
+            auto global = dimGrid * dimBlock;
+            sycl_get_queue()->parallel_for<class dlsum_fmod_inv_gpu_1rhs_warp_kernel>
+              (sycl::nd_range<3>(global, dimBlock), [=] (sycl::nd_item<3> item) {
+                dlsum_fmod_inv_gpu_1rhs_warp(nbcol_loc,nblock_ex,lsum,x,nrhs,maxsup,nsupers,fmod,LBtree_ptr,LRtree_ptr,ilsum,Lrowind_bc_dat,Lrowind_bc_offset,Lnzval_bc_dat,Lnzval_bc_offset,Linv_bc_dat,Linv_bc_offset,Lindval_loc_bc_dat,Lindval_loc_bc_offset, xsup,bcols_masked, grid, item);
+              });
+            #else
             dim3 dimBlock(nthread_x, nthread_y,1);
             dlsum_fmod_inv_gpu_1rhs_warp<<< CEILING(nbcol_loc,NWARP), dimBlock >>>(nbcol_loc,nblock_ex,lsum,x,nrhs,maxsup,nsupers,fmod,LBtree_ptr,LRtree_ptr,ilsum,Lrowind_bc_dat,Lrowind_bc_offset,Lnzval_bc_dat,Lnzval_bc_offset,Linv_bc_dat,Linv_bc_offset,Lindval_loc_bc_dat,Lindval_loc_bc_offset, xsup,bcols_masked, grid);
+            #endif // HAVE_SYCL
         }
         checkGPU(gpuGetLastError());
      }else{
@@ -3055,6 +3116,9 @@ int_t *Uindval_loc_bc_dat,
 long int *Uindval_loc_bc_offset,
 int_t *xsup,
 gridinfo_t *grid
+#ifdef HAVE_SYCL
+, sycl::nd_item<3> item
+#endif
 )
 {
     double zero = 0.0, alpha = 1.0, beta = 0.0;
@@ -3063,7 +3127,13 @@ gridinfo_t *grid
 	int_t  k,i, l,ii, ik, il, j, lk, lib, ub;
 	int_t gik, rel, lptr, ncol, icol;
 	double temp1;
+     #ifndef HAVE_SYCL
+     sycl::group wrk_grp = item.get_group();
+     using tileA_t = double[MAXSUPER];
+     tileA_t& temp2 = *sycl::ext::oneapi::group_local_memory_for_overwrite<tileA_t>(wrk_grp);
+     #else
      __shared__ double temp2[MAXSUPER];
+     #endif
 	int aln_i;
 	aln_i = 1;//ceil(CACHELINE/(double)iword);
 	int   knsupc;    /* Size of supernode k.                               */
@@ -3301,7 +3371,11 @@ gridinfo_t *grid
 
                                 gemm_device_dlsum_bmod_stridedB(iknsupc, nrhs, ncol, blx, bly,
                                 &lusup[luptr_tmp1], iknsupc, &x[ii], knsupc, rC,
-                                alpha, beta, lptr, rel, usub);
+                                alpha, beta, lptr, rel, usub
+#ifdef HAVE_SYCL
+                                                                , item
+#endif
+                                                                );
 
                                 #pragma unroll
                                 for (ni = 0; ni < THR_N; ni++) {
@@ -3369,6 +3443,9 @@ gridinfo_t *grid
   long int *Uindval_loc_bc_offset,
   int_t *xsup,
   gridinfo_t *grid
+#ifdef HAVE_SYCL
+  , sycl::nd_item<3> item
+#endif
   )
   {
     //   double xtemp;
@@ -3378,9 +3455,16 @@ gridinfo_t *grid
       int_t  k,i,i1, bb, l,ii, lk, jk, lib, ljb, ub;
       int_t gik, rel, lptr, ncol, icol;
       double temp1;
+      #ifdef HAVE_SYCL
+      sycl::group wrk_grp = item.get_group();
+      using tileA_t = double[MAXSUPER];
+      tileA_t& s_lsum = *sycl::ext::oneapi::group_local_memory_for_overwrite<tileA_t>(wrk_grp);
+      int& s_bmod = *sycl::ext::oneapi::group_local_memory_for_overwrite<int>(wrk_grp);
+      #else
       __shared__ double s_lsum[MAXSUPER];
       // volatile __shared__ double temp2[MAXSUPER];
       volatile __shared__ int s_bmod;
+      #endif
       int aln_i;
       aln_i = 1;//ceil(CACHELINE/(double)iword);
       int nub;       /* Number of U blocks.                                */
@@ -3621,6 +3705,9 @@ double *Uinv_bc_dat,
 long int *Uinv_bc_offset,
 int_t *xsup,
 gridinfo_t *grid
+#ifdef HAVE_SYCL
+, sycl::nd_item<3> item
+#endif
 )
 {
   //   double xtemp;
@@ -3630,9 +3717,16 @@ gridinfo_t *grid
     int_t  k,i, bb, l,ii, lk, jk, lib, ljb;
     int_t gik, rel, ncol, icol;
     double temp1;
+    #ifdef HAVE_SYCL
+    sycl::group wrk_grp = item.get_group();
+    using tileA_t = double[MAXSUPER];
+    tileA_t& s_lsum = *sycl::ext::oneapi::group_local_memory_for_overwrite<tileA_t>(wrk_grp);
+    int& s_bmod = *sycl::ext::oneapi::group_local_memory_for_overwrite<int>(wrk_grp);
+    #else
     __shared__ double s_lsum[MAXSUPER];
     // volatile __shared__ double temp2[MAXSUPER];
     volatile __shared__ int s_bmod;
+    #endif // HAVE_SYCL
     int aln_i;
     aln_i = 1;//ceil(CACHELINE/(double)iword);
 
@@ -3867,6 +3961,9 @@ int_t *Uindval_loc_bc_dat,
 long int *Uindval_loc_bc_offset,
 int_t *xsup,
 gridinfo_t *grid
+#ifdef HAVE_SYCL
+, sycl::nd_item<3> item
+#endif
 )
 {
     double zero = 0.0;
@@ -4086,7 +4183,7 @@ gridinfo_t *grid
 
 
 
-
+#ifdef HAVE_NVSHMEM
 
 /************************************************************************/
 /*! \brief
@@ -4460,6 +4557,7 @@ gridinfo_t *grid
 
  } /* dlsum_bmod_inv_gpu_mrhs_nvshmem */
 
+#endif // HAVE_NVSHMEM
 
 
 void dlsum_bmod_inv_gpu_wrap
@@ -4534,9 +4632,39 @@ if(procs==1){
 #else
     if(1){
 #endif
+
+        #ifdef HAVE_SYCL
+        sycl::range<3> dimBlock(1, nthread_y, nthread_x);
+        sycl::range<3> dimGrid(1, 1, nbcol_loc);
+        auto global = dimGrid * dimBlock;
+        sycl_get_queue()->parallel_for<class dlsum_bmod_inv_gpu_mrhs_kernel>
+          (sycl::nd_range<3>(global, dimBlock), [=] (sycl::nd_item<3> item) {
+            dlsum_bmod_inv_gpu_mrhs(nbcol_loc,lsum,x,nrhs,nsupers,bmod, UBtree_ptr,URtree_ptr,ilsum,Ucolind_bc_dat,Ucolind_bc_offset,Unzval_bc_dat,Unzval_bc_offset,Uinv_bc_dat,Uinv_bc_offset,Uindval_loc_bc_dat,Uindval_loc_bc_offset,xsup,grid,item);
+          });
+        #else // HAVE_SYCL
         dim3 dimBlock(nthread_x, nthread_y);
         dlsum_bmod_inv_gpu_mrhs<<< nbcol_loc, dimBlock >>>(nbcol_loc,lsum,x,nrhs,nsupers,bmod, UBtree_ptr,URtree_ptr,ilsum,Ucolind_bc_dat,Ucolind_bc_offset,Unzval_bc_dat,Unzval_bc_offset,Uinv_bc_dat,Uinv_bc_offset,Uindval_loc_bc_dat,Uindval_loc_bc_offset,xsup,grid);
+        #endif // HAVE_SYCL
     }else{
+
+        #ifdef HAVE_SYCL
+        sycl::range<3> dimBlock(1, nthread_y, nthread_x);
+        sycl::range<3> dimGrid(1, 1, nbrow_loc);
+        auto global = dimGrid * dimBlock;
+
+#ifdef U_BLOCK_PER_ROW_ROWDATA
+        sycl_get_queue()->parallel_for<class dlsum_bmod_inv_gpu_1rhs_new_rowdata_kernel>
+          (sycl::nd_range<3>(global, dimBlock), [=] (sycl::nd_item<3> item) {
+            dlsum_bmod_inv_gpu_1rhs_new_rowdata(nbrow_loc,lsum,x,nrhs,nsupers,bmod, UBtree_ptr,URtree_ptr,ilsum,Ucolind_br_dat,Ucolind_br_offset,Unzval_br_new_dat,Unzval_br_new_offset,Uinv_bc_dat,Uinv_bc_offset,xsup,grid,item);
+          });
+#else
+        sycl_get_queue()->parallel_for<class dlsum_bmod_inv_gpu_1rhs_new_kernel>
+          (sycl::nd_range<3>(global, dimBlock), [=] (sycl::nd_item<3> item) {
+            dlsum_bmod_inv_gpu_1rhs_new(nbrow_loc,lsum,x,nrhs,nsupers,bmod, UBtree_ptr,URtree_ptr,ilsum,Ucolind_bc_dat,Ucolind_bc_offset,Uind_br_dat,Uind_br_offset,Unzval_bc_dat,Unzval_bc_offset,Uinv_bc_dat,Uinv_bc_offset,Uindval_loc_bc_dat,Uindval_loc_bc_offset,xsup,grid,item);
+          });
+#endif
+
+        #else // HAVE_SYCL
         dim3 dimBlock(nthread_x, nthread_y,1);
         // dlsum_bmod_inv_gpu_1rhs_warp<<< CEILING(nbcol_loc,NWARP), dimBlock >>>(nbcol_loc,lsum,x,nrhs,nsupers,bmod, UBtree_ptr,URtree_ptr,ilsum,Ucolind_bc_dat,Ucolind_bc_offset,Unzval_bc_dat,Unzval_bc_offset,Uinv_bc_dat,Uinv_bc_offset,Uindval_loc_bc_dat,Uindval_loc_bc_offset,xsup,grid);
 #ifdef U_BLOCK_PER_ROW_ROWDATA
@@ -4544,6 +4672,7 @@ if(procs==1){
 #else
         dlsum_bmod_inv_gpu_1rhs_new<<< nbrow_loc, dimBlock >>>(nbrow_loc,lsum,x,nrhs,nsupers,bmod, UBtree_ptr,URtree_ptr,ilsum,Ucolind_bc_dat,Ucolind_bc_offset,Uind_br_dat,Uind_br_offset,Unzval_bc_dat,Unzval_bc_offset,Uinv_bc_dat,Uinv_bc_offset,Uindval_loc_bc_dat,Uindval_loc_bc_offset,xsup,grid);
 #endif
+        #endif // HAVE_SYCL
     }
 
 
@@ -4658,7 +4787,8 @@ if(procs==1){
 }
 
 
-
+#ifndef HAVE_SYCL
 #ifdef __cplusplus
 }
+#endif
 #endif

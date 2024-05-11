@@ -74,7 +74,7 @@ zCompRow_to_CompCol_dist(int_t m, int_t n, int_t nnz,
                          doublecomplex *a, int_t *colind, int_t *rowptr,
                          doublecomplex **at, int_t **rowind, int_t **colptr)
 {
-    register int_t i, j, col, relpos;
+    int_t i, j, col, relpos;
     int_t *marker;
 
     /* Allocate storage for another copy of the matrix. */
@@ -170,7 +170,7 @@ zCopy_CompCol_Matrix_dist(SuperMatrix *A, SuperMatrix *B)
 void zPrint_CompCol_Matrix_dist(SuperMatrix *A)
 {
     NCformat     *Astore;
-    register int_t i;
+    int_t i;
     doublecomplex       *dp;
 
     printf("\nCompCol matrix: ");
@@ -194,7 +194,7 @@ void zPrint_CompCol_Matrix_dist(SuperMatrix *A)
 void zPrint_Dense_Matrix_dist(SuperMatrix *A)
 {
     DNformat     *Astore;
-    register int_t i;
+    int_t i;
     doublecomplex       *dp;
 
     printf("\nDense matrix: ");
@@ -584,7 +584,7 @@ zFillRHS_dist(char *trans, int_t nrhs, doublecomplex *x, int_t ldx,
 void
 zfill_dist(doublecomplex *a, int_t alen, doublecomplex dval)
 {
-    register int_t i;
+    int_t i;
     for (i = 0; i < alen; i++) a[i] = dval;
 }
 
@@ -617,7 +617,7 @@ void zinf_norm_error_dist(int_t n, int_t nrhs, doublecomplex *x, int_t ldx,
 
 void PrintDoublecomplex(char *name, int_t len, doublecomplex *x)
 {
-    register int_t i;
+    int_t i;
 
     printf("%10s:\tReal\tImag\n", name);
     for (i = 0; i < len; ++i)
@@ -626,7 +626,7 @@ void PrintDoublecomplex(char *name, int_t len, doublecomplex *x)
 
 int file_PrintDoublecomplex(FILE *fp, char *name, int_t len, doublecomplex *x)
 {
-    register int_t i;
+    int_t i;
 
     fprintf(fp, "%10s:\tReal\tImag\n", name);
     for (i = 0; i < len; ++i)
@@ -639,8 +639,8 @@ int file_PrintDoublecomplex(FILE *fp, char *name, int_t len, doublecomplex *x)
 double zMaxAbsLij(int iam, int n, Glu_persist_t *Glu_persist,
 		 zLUstruct_t *LUstruct, gridinfo_t *grid)
 {
-    register int extra, gb, j, lb, nsupc, nsupr, ncb;
-    register int_t k, mycol, r;
+    int extra, gb, j, lb, nsupc, nsupr, ncb;
+    int_t k, mycol, r;
     zLocalLU_t *Llu = LUstruct->Llu;
     int_t *xsup = Glu_persist->xsup;
     int_t *index;
@@ -681,8 +681,8 @@ double zMaxAbsUij(int iam, int n, Glu_persist_t *Glu_persist,
 		 zLUstruct_t *LUstruct, gridinfo_t *grid)
 {
     zLocalLU_t *Llu = LUstruct->Llu;
-    register int c, extra, jb, k, lb, len, nb, nrb, nsupc;
-    register int myrow, r, j, nsupers;
+    int c, extra, jb, k, lb, len, nb, nrb, nsupc;
+    int myrow, r, j, nsupers;
     int_t *xsup = Glu_persist->xsup;
     int_t *index;
     doublecomplex *nzval;
@@ -728,8 +728,8 @@ double zMaxAbsUij(int iam, int n, Glu_persist_t *Glu_persist,
 void zPrintLblocks(int iam, int_t nsupers, gridinfo_t *grid,
 		  Glu_persist_t *Glu_persist, zLocalLU_t *Llu)
 {
-    register int c, extra, gb, j, lb, nsupc, nsupr, len, nb, ncb;
-    register int_t k, mycol, r;
+    int c, extra, gb, j, lb, nsupc, nsupr, len, nb, ncb;
+    int_t k, mycol, r;
     int_t *xsup = Glu_persist->xsup;
     int_t *index;
     doublecomplex *nzval;
@@ -777,8 +777,8 @@ void zPrintLblocks(int iam, int_t nsupers, gridinfo_t *grid,
 void zZeroLblocks(int iam, int n, gridinfo_t *grid, zLUstruct_t *LUstruct)
 {
     doublecomplex zero = {0.0, 0.0};
-    register int extra, gb, j, lb, nsupc, nsupr, ncb;
-    register int k, mycol, r;
+    int extra, gb, j, lb, nsupc, nsupr, ncb;
+    int k, mycol, r;
     zLocalLU_t *Llu = LUstruct->Llu;
     Glu_persist_t *Glu_persist = LUstruct->Glu_persist;
     int_t *xsup = Glu_persist->xsup;
@@ -812,14 +812,14 @@ void zZeroLblocks(int iam, int n, gridinfo_t *grid, zLUstruct_t *LUstruct)
 void zDumpLblocks(int iam, int_t nsupers, gridinfo_t *grid,
 		  Glu_persist_t *Glu_persist, zLocalLU_t *Llu)
 {
-    register int c, extra, gb, j, i, lb, nsupc, nsupr, len, nb, ncb;
+    int c, extra, gb, j, i, lb, nsupc, nsupr, len, nb, ncb;
     int k, mycol, r, n, nmax;
     int_t nnzL;
     int_t *xsup = Glu_persist->xsup;
     int_t *index;
     doublecomplex *nzval;
 	char filename[256];
-	FILE *fp, *fopen();
+	FILE *fp;
 
 	// assert(grid->npcol*grid->nprow==1);
 
@@ -912,8 +912,8 @@ void zDumpLblocks(int iam, int_t nsupers, gridinfo_t *grid,
 void zPrintUblocks(int iam, int_t nsupers, gridinfo_t *grid,
 		  Glu_persist_t *Glu_persist, zLocalLU_t *Llu)
 {
-    register int c, extra, jb, k, lb, len, nb, nrb, nsupc;
-    register int_t myrow, r;
+    int c, extra, jb, k, lb, len, nb, nrb, nsupc;
+    int_t myrow, r;
     int_t *xsup = Glu_persist->xsup;
     int_t *index;
     doublecomplex *nzval;
@@ -953,8 +953,8 @@ void zPrintUblocks(int iam, int_t nsupers, gridinfo_t *grid,
 void zZeroUblocks(int iam, int n, gridinfo_t *grid, zLUstruct_t *LUstruct)
 {
     doublecomplex zero = {0.0, 0.0};
-    register int i, extra, lb, len, nrb;
-    register int myrow, r;
+    int i, extra, lb, len, nrb;
+    int myrow, r;
     zLocalLU_t *Llu = LUstruct->Llu;
     Glu_persist_t *Glu_persist = LUstruct->Glu_persist;
     int_t *xsup = Glu_persist->xsup;

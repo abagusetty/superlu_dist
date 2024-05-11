@@ -606,14 +606,14 @@ int dcheckLUFromDisk(int nsupers, int_t *xsup, dLUstruct_t *LUstruct)
 void dDumpLblocks3D(int_t nsupers, gridinfo3d_t *grid3d,
 		  Glu_persist_t *Glu_persist, dLocalLU_t *Llu)
 {
-    register int c, extra, gb, j, i, lb, nsupc, nsupr, len, nb, ncb;
+    int c, extra, gb, j, i, lb, nsupc, nsupr, len, nb, ncb;
     int k, mycol, r, n, nmax;
     int_t nnzL;
     int_t *xsup = Glu_persist->xsup;
     int_t *index;
     double *nzval;
 	char filename[256];
-	FILE *fp, *fopen();
+	FILE *fp;
 	gridinfo_t *grid = &(grid3d->grid2d);
 	int iam = grid->iam;
 	int iam3d = grid3d->iam;
@@ -1108,7 +1108,7 @@ void pdgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 		if (symb_comm != MPI_COMM_NULL)
 			MPI_Comm_free(&symb_comm);
 		if ( Fact != SamePattern_SameRowPerm){
-			LUstruct->trf3Dpart = SUPERLU_MALLOC(sizeof(dtrf3Dpartition_t));
+                        LUstruct->trf3Dpart = (dtrf3Dpartition_t *)SUPERLU_MALLOC(sizeof(dtrf3Dpartition_t));
 			// computes the new partition for 3D factorization here
 			trf3Dpartition=LUstruct->trf3Dpart;
 			dnewTrfPartitionInit(nsupers, LUstruct, grid3d);
@@ -1172,7 +1172,7 @@ void pdgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 			dinit3DLUstructForest(trf3Dpartition->myTreeIdxs, trf3Dpartition->myZeroTrIdxs,
 									trf3Dpartition->sForests, LUstruct, grid3d);
 
-			dLUValSubBuf_t *LUvsb = SUPERLU_MALLOC(sizeof(dLUValSubBuf_t));
+			dLUValSubBuf_t *LUvsb = (dLUValSubBuf_t *)SUPERLU_MALLOC(sizeof(dLUValSubBuf_t));
 			dLluBufInit(LUvsb, LUstruct);
 			trf3Dpartition->LUvsb = LUvsb;
 			trf3Dpartition->iperm_c_supno = create_iperm_c_supno(nsupers, options, LUstruct->Glu_persist, LUstruct->etree, LUstruct->Llu->Lrowind_bc_ptr, LUstruct->Llu->Ufstnz_br_ptr, grid3d);

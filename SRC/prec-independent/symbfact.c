@@ -236,8 +236,8 @@ static void relax_snode
  )
 {
 
-    register int_t j, parent, nsuper;
-    register int_t fsupc; /* beginning of a snode */
+    int_t j, parent, nsuper;
+    int_t fsupc; /* beginning of a snode */
     
     ifill_dist(relax_end, n, SLU_EMPTY);
     ifill_dist(desc, n+1, 0);
@@ -304,13 +304,13 @@ static int_t snode_dfs
 
     NCPformat *Astore;
     int_t  *asub, *xa_begin, *xa_end;
-    register int_t i, k, ifrom, ito, nextl, new_next;
+    int_t i, k, ifrom, ito, nextl, new_next;
     int_t  nsuper, krow, kmark, mem_error;
     int_t  *xsup, *supno;
     int_t  *lsub, *xlsub;
     int_t  nzlmax, nextu;
     
-    Astore   = A->Store;
+    Astore   = (NCPformat *)A->Store;
     asub     = Astore->rowind;
     xa_begin = Astore->colbeg;
     xa_end   = Astore->colend;
@@ -491,7 +491,7 @@ static int_t column_dfs
     int_t     mem_error;
     
     /* Initializations */
-    Astore   = A->Store;
+    Astore   = (NCPformat *)A->Store;
     asub     = Astore->rowind;
     xa_begin = Astore->colbeg;
     xa_end   = Astore->colend;

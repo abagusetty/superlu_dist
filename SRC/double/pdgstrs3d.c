@@ -3924,9 +3924,9 @@ int_t dlasum_bmod_Tree(int_t  pTree, int_t cTree, double *lsum, double *x,
 
 int_t dinitLsumBmod_buff(int_t ns, int nrhs, dlsumBmod_buff_t* lbmod_buf)
 {
-    lbmod_buf->tX = SUPERLU_MALLOC(ns * nrhs * sizeof(double));
-    lbmod_buf->tU = SUPERLU_MALLOC(ns * ns * sizeof(double));
-    lbmod_buf->indCols = SUPERLU_MALLOC(ns * sizeof(int_t));
+  lbmod_buf->tX = (double *)SUPERLU_MALLOC(ns * nrhs * sizeof(double));
+  lbmod_buf->tU = (double *)SUPERLU_MALLOC(ns * ns * sizeof(double));
+  lbmod_buf->indCols = (int_t *)SUPERLU_MALLOC(ns * sizeof(int_t));
     return 0;
 }
 
@@ -6715,7 +6715,7 @@ pdgstrs3d (superlu_dist_options_t *options, int_t n, dLUstruct_t * LUstruct,
      * Initializing xT
      */
 
-    int_t* ilsumT = SUPERLU_MALLOC (sizeof(int_t) * (nub + 1));
+    int_t* ilsumT = (int_t *)SUPERLU_MALLOC (sizeof(int_t) * (nub + 1));
     int_t ldaspaT = 0;
     ilsumT[0] = 0;
     for (int_t jb = 0; jb < nsupers; ++jb)

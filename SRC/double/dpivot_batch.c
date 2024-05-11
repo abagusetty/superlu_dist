@@ -73,7 +73,7 @@ dpivot_batch(
     
     /* Decipher the input matrices */
     SuperMatrix **A;
-    A = SUPERLU_MALLOC(batchCount * sizeof(SuperMatrix *));
+    A = (SuperMatrix **)SUPERLU_MALLOC(batchCount * sizeof(SuperMatrix *));
     for (i = 0; i < batchCount; ++i) {
 	A[i] = (SuperMatrix *) SparseMatrix_handles[i];
     }

@@ -221,6 +221,15 @@ if ( msg0 && msg2 ) {  /* L(:,k) and U(k,:) are not empty. */
 		    gpuMemcpyAsync(dB+b_offset, tempu+b_offset, B_stream_size,
 		    		    gpuMemcpyHostToDevice, streams[stream_id]);
 
+                    #ifdef HAVE_SYCL
+                    oneapi::mkl::blas::column_major::gemm(*streams[stream_id],
+                                            GPUBLAS_OP_N, GPUBLAS_OP_N,
+                                            nbrow, num_col_stream, ldu,
+                                            alpha, dA, nbrow,
+                                            &dB[b_offset], ldu,
+                                            beta, &dC[c_offset],
+                                            nbrow);
+                    #else
 		    gpublasCheckErrors(
 				  gpublasSetStream(handle[stream_id],
 						  streams[stream_id])
@@ -235,6 +244,7 @@ if ( msg0 && msg2 ) {  /* L(:,k) and U(k,:) are not empty. */
 					      &beta, &dC[c_offset],
                                               nbrow)
 				  );
+                    #endif // HAVE_SYCL
 
 		    checkGPU( gpuMemcpyAsync(tempv1, dC+c_offset,
 					   C_stream_size,

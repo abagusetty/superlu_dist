@@ -47,6 +47,7 @@ option(TPL_COMBBLAS_INCLUDE_DIRS "List of absolute paths to CombBLAS include dir
 #-- CUDA
 option(TPL_ENABLE_CUDALIB   "Enable the CUDA libraries" OFF)
 option(TPL_ENABLE_HIPLIB   "Enable the HIP libraries" OFF)
+option(TPL_ENABLE_SYCLLIB   "Enable the SYCL libraries" OFF)
 #-- NVSHMEM
 option(TPL_ENABLE_NVSHMEM   "Enable the NVSHMEM libraries" OFF)
 option(TPL_ENABLE_ROCSHMEM   "Enable the ROCSHMEM libraries" OFF)
@@ -273,71 +274,96 @@ endif()
 
 include(CheckLanguage)
 
-#--------------------- CUDA libraries ---------------------
-if (TPL_ENABLE_CUDALIB)   ## want to use cuda
+#---- CUDA libraries
+if (TPL_ENABLE_CUDALIB)
+  message("-- Enabled support for CUDA.")
   check_language(CUDA)
-  if(CMAKE_CUDA_COMPILER)
-    message("-- Enabled support for CUDA.")
-    enable_language(CUDA)
-    find_package(CUDAToolkit REQUIRED)
+  enable_language(CUDA)
 
-    # make.inc exporting not yet tested
-    set(CUDA_LIB CUDA::cudart CUDA::cublas CUDA::cusolver)
-    string (REPLACE ";" " " CUDA_LIB_STR "${CUDA_LIB}")
-    set(CUDA_LIB_EXPORT ${CUDA_LIB_STR}) 
-    set(HAVE_CUDA TRUE)
-    # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_CUDA")
-    # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -DHAVE_CUDA")
-
-    #--------------------- NVSHMEM libraries ---------------------
-    if (TPL_ENABLE_NVSHMEM)   ## want to use nvshmem
-        set(NVSHMEM_LIB ${TPL_NVSHMEM_LIBRARIES}) 
-        message("-- Enabled support for NVSHMEM='${NVSHMEM_LIB}'")
-        set(HAVE_NVSHMEM TRUE)
-    endif()
-
-  else()
-    message("-- CUDA libraries not found.")
-  endif()
-endif()
-
-
-
-
-#--------------------- HIP libraries ---------------------
-if (TPL_ENABLE_HIPLIB)   ## want to use hip
-  find_package(HIP MODULE)
-  if(HIP_FOUND)
-    message("-- Enabled support for HIP.")
-    find_package(hipblas REQUIRED)
-    find_package(rocsolver REQUIRED)
-    find_package(rocblas REQUIRED)
-    set(HIP_LIB roc::hipblas roc::rocblas roc::rocsolver)
-    message("HIP_LIB ${HIP_LIB}")
-
-    # make.inc exporting not yet tested
-    string (REPLACE ";" " " HIP_LIB_STR "${HIP_LIB}")
-    set(HIP_LIB_EXPORT ${HIP_LIB_STR}) 
-    set(HAVE_HIP TRUE)
-    # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_HIP")
-    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_HIP")    
-    # set(HIP_HIPCC_FLAGS "${HIP_HIPCC_FLAGS} -DHAVE_HIP")    
-    if (BUILD_SHARED_LIBS)
-    set(HIP_HIPCC_FLAGS "${HIP_HIPCC_FLAGS} -fPIC")    
-    endif()
-
-    # if ("$ENV{HIP_PLATFORM}" STREQUAL "hcc")
-    #   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_HIP -D__HIP_PLATFORM_HCC__")
-    #   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_HIP -D__HIP_PLATFORM_HCC__")
-    # elseif ("$ENV{HIP_PLATFORM}" STREQUAL "nvcc")
-    #   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_HIP -D__HIP_PLATFORM_NVCC__")
-    #   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_HIP -D__HIP_PLATFORM_NVCC__")
+  set(CUDA_SEPARABLE_COMPILATION ON)
+  if(NOT CMAKE_CUDA_ARCHITECTURES)
+    # if(${CMAKE_VERSION} VERSION_LESS_EQUAL "3.13.4")
+    #   cuda_select_nvcc_arch_flags(ARCH_FLAGS "Auto") # optional argument for arch to add
+    #   message("ARCH_FLAGS = ${ARCH_FLAGS}")
+    #   string(REPLACE "-gencode;" "--generate-code=" ARCH_FLAGS "${ARCH_FLAGS}")
+    #   string(APPEND CMAKE_CUDA_FLAGS "${ARCH_FLAGS}")
+    # else()
+    include(FindCUDA/select_compute_arch)
+    CUDA_DETECT_INSTALLED_GPUS(INSTALLED_GPU_CCS_1)
+    string(STRIP "${INSTALLED_GPU_CCS_1}" INSTALLED_GPU_CCS_2)
+    string(REPLACE " " ";" INSTALLED_GPU_CCS_3 "${INSTALLED_GPU_CCS_2}")
+    string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
+    SET(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
+    set_property(GLOBAL PROPERTY CUDA_ARCHITECTURES "${CUDA_ARCH_LIST}")
     # endif()
-
-  else()
-    message("-- HIP libraries not found.")
   endif()
-endif()
+
+  #--------------------- NVSHMEM libraries ---------------------
+  if (TPL_ENABLE_NVSHMEM)   ## want to use nvshmem
+    message("-- Enabled support for NVSHMEM='${NVSHMEM_DIR}'")
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindNvshmem.cmake)
+    find_package(Nvshmem REQUIRED)
+    if (Nvshmem_FOUND)
+      set(NVSHMEM_LIB ${NVSHMEM_LIBRARIES})
+    else()
+      set(NVSHMEM_LIB ${TPL_NVSHMEM_LIBRARIES})
+    endif()
+
+    set(HAVE_NVSHMEM TRUE)
+    set(CMAKE_CUDA_FLAGS_RELEASE "-O3 --expt-relaxed-constexpr -DNDEBUG -rdc=true" CACHE STRING "")
+  else()
+    set(CMAKE_CUDA_FLAGS_RELEASE "-O3 --expt-relaxed-constexpr -DNDEBUG" CACHE STRING "")
+  endif(TPL_ENABLE_NVSHMEM)
+
+  set(CMAKE_CUDA_FLAGS_DDEBUG "-O0 --expt-relaxed-constexpr -DDEBUG -g" CACHE STRING "")
+
+
+  add_definitions(-DGPU_ACC)
+  set( HAVE_CUDA TRUE )
+endif (TPL_ENABLE_CUDALIB)
+
+
+
+#---- HIP libraries
+if (TPL_ENABLE_HIPLIB)
+  message("-- Enabled support for HIP.")
+  check_language(HIP)
+  enable_language(HIP)
+
+  add_definitions(-DGPU_ACC)
+  set( HAVE_HIP TRUE )
+
+  # if ("$ENV{HIP_PLATFORM}" STREQUAL "hcc")
+  #   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_HIP -D__HIP_PLATFORM_HCC__")
+  #   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_HIP -D__HIP_PLATFORM_HCC__")
+  # elseif ("$ENV{HIP_PLATFORM}" STREQUAL "nvcc")
+  #   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_HIP -D__HIP_PLATFORM_NVCC__")
+  #   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_HIP -D__HIP_PLATFORM_NVCC__")
+  # endif()  
+endif (TPL_ENABLE_HIPLIB)
+
+
+#--------------------- SYCL libraries ---------------------
+if (TPL_ENABLE_SYCLLIB)   ## want to use SYCL
+  # unsets previous CXX standard and sets CXX to std++17
+  unset(CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+
+  # set SYCL flags
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-expected-file-type -fsycl -sycl-std=2020 -fsycl-unnamed-lambda -fsycl-device-code-split=per_kernel")
+
+  message("-- Enabled support for SYCL.")
+
+  # TODO: Fortran is turned off because of linker issues with CXX
+  set(XSDK_ENABLE_Fortran OFF)
+
+  add_definitions(-DGPU_ACC)
+  set(HAVE_SYCL TRUE)
+
+  #include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindoneMKL.cmake)
+endif (TPL_ENABLE_SYCLLIB)
+
+
 
 #--------------------- BLAS ---------------------
 if(NOT TPL_ENABLE_INTERNAL_BLASLIB)

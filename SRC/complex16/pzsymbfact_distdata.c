@@ -1530,7 +1530,7 @@ doublecomplex *dense, *dense_col; /* SPA */
   Unzval_br_ptr[nsupers_i-1] = NULL;
   Ufstnz_br_ptr[nsupers_i-1] = NULL;
 
-  if ( !(ToSendD = SUPERLU_MALLOC(nsupers_i * sizeof(int))) ) {
+  if ( !(ToSendD = (int *)SUPERLU_MALLOC(nsupers_i * sizeof(int))) ) {
     fprintf(stderr, "Malloc fails for ToSendD[].");
     return (memDist + memNLU + memTRS);
   }
@@ -2369,9 +2369,9 @@ doublecomplex *dense, *dense_col; /* SPA */
 			ABORT("Malloc fails for Urbs[]"); /* Record number of nonzero
 								 blocks in a block column. */
 		Urbs1 = Urbs + nub;
-		if ( !(Ucb_indptr = SUPERLU_MALLOC(nub * sizeof(Ucb_indptr_t *))) )
+		if ( !(Ucb_indptr = (Ucb_indptr_t **)SUPERLU_MALLOC(nub * sizeof(Ucb_indptr_t *))) )
 			ABORT("Malloc fails for Ucb_indptr[]");
-		if ( !(Ucb_valptr = SUPERLU_MALLOC(nub * sizeof(int_t *))) )
+		if ( !(Ucb_valptr = (int_t **)SUPERLU_MALLOC(nub * sizeof(int_t *))) )
 			ABORT("Malloc fails for Ucb_valptr[]");
 	// if (!(Ucb_valoffset =
 				//           (long int *)SUPERLU_MALLOC(nub * sizeof(long int))))
@@ -2408,7 +2408,7 @@ doublecomplex *dense, *dense_col; /* SPA */
 		for (lb = 0; lb < nub; ++lb) {
 			if ( Urbs[lb] ) { /* Not an empty block column. */
 			    if ( !(Ucb_indptr[lb]
-					= SUPERLU_MALLOC(Urbs[lb] * sizeof(Ucb_indptr_t))) )
+                                        = (Ucb_indptr_t *)SUPERLU_MALLOC(Urbs[lb] * sizeof(Ucb_indptr_t))) )
 					ABORT("Malloc fails for Ucb_indptr[lb][]");
 			    // Ucb_indoffset[lb]=Urbs[lb];
 			    // Ucb_indcnt += Ucb_indoffset[lb];

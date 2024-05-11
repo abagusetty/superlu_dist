@@ -66,7 +66,7 @@ dequil_batch(
     CHECK_MALLOC(0, "Enter dequil_batch()");
 #endif
     /* Decipher the input matrices */
-    SuperMatrix **A = SUPERLU_MALLOC(batchCount * sizeof(SuperMatrix *));
+    SuperMatrix **A = (SuperMatrix **)SUPERLU_MALLOC(batchCount * sizeof(SuperMatrix *));
     for (i = 0; i < batchCount; ++i) {
 	A[i] = (SuperMatrix *) SparseMatrix_handles[i];
     }

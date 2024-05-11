@@ -65,7 +65,7 @@ sForest_t**  getNestDissForests( int_t maxLvl, int_t nsupers, int_t*setree, tree
 	int_t numForests = (1 << maxLvl) - 1;
 
 	// allocate space for forests
-	sForest_t**  sForests = SUPERLU_MALLOC (numForests * sizeof (sForest_t*));
+	sForest_t**  sForests = (sForest_t **)SUPERLU_MALLOC (numForests * sizeof (sForest_t*));
 
 
 	int_t* gTreeHeads = getTreeHeads(maxLvl, nsupers, treeList);
@@ -81,7 +81,7 @@ sForest_t**  getNestDissForests( int_t maxLvl, int_t nsupers, int_t*setree, tree
 		sForests[i] = NULL;
 		if (gNodeCount[i] > 0)
 		{
-			sForests[i] = SUPERLU_MALLOC (sizeof (sForest_t));
+                        sForests[i] = (sForest_t *)SUPERLU_MALLOC (sizeof (sForest_t));
 			sForests[i]->nNodes = gNodeCount[i];
 			sForests[i]->numTrees = 1;
 			sForests[i]->nodeList = gNodeLists[i];
@@ -306,7 +306,7 @@ int_t** getTreePermFr( int_t* myTreeIdxs,
 
 int* getIsNodeInMyGrid(int_t nsupers, int_t maxLvl, int_t* myNodeCount, int_t** treePerm)
 {
-    int* isNodeInMyGrid = SUPERLU_MALLOC(nsupers * sizeof(int));
+    int* isNodeInMyGrid = (int *)SUPERLU_MALLOC(nsupers * sizeof(int));
 
     for(int i=0; i<nsupers; i++) isNodeInMyGrid[i] =0;
 
@@ -535,7 +535,7 @@ sForest_t*  createForestNew(int_t numTrees, int_t nsupers, int_t * nodeCounts,  
 {
 	if (numTrees == 0) return NULL;
 
-	sForest_t* forest = SUPERLU_MALLOC(sizeof(sForest_t));
+	sForest_t* forest = (sForest_t *)SUPERLU_MALLOC(sizeof(sForest_t));
 	forest->numTrees = numTrees;
 
 	double frWeight = 0;
@@ -647,7 +647,7 @@ forestPartition_t iterativeFrPartitioning(rForest_t* rforest, int_t nsupers, int
 
 	int treeArrSize = SUPERLU_MAX( 2*nTreeSet, NUM_TREE_LOWERB) ;
     int_t* ancTreeCount = intMalloc_dist(treeArrSize);
-    int_t** ancNodeLists = SUPERLU_MALLOC(treeArrSize * sizeof(int_t*));
+    int_t** ancNodeLists = (int_t **)SUPERLU_MALLOC(treeArrSize * sizeof(int_t*));
 
     double * weightArr = doubleMalloc_dist(treeArrSize);
     int_t* treeSet = intMalloc_dist(treeArrSize);
@@ -804,7 +804,7 @@ sForest_t* r2sForest(rForest_t* rforest, int_t nsupers, int_t * setree, treeList
 
 	int_t* treeHeads =  rforest->treeHeads;
 	int_t* nodeCounts = INT_T_ALLOC(nTree);
-	int_t** NodeLists = SUPERLU_MALLOC(nTree * sizeof(int_t*));
+	int_t** NodeLists = (int_t **)SUPERLU_MALLOC(nTree * sizeof(int_t*));
 
 	for (int i = 0; i < nTree; ++i)
 	{
@@ -838,7 +838,7 @@ sForest_t**  getGreedyLoadBalForests( int_t maxLvl, int_t nsupers, int_t * setre
 	sForest_t**  sForests = (sForest_t** ) SUPERLU_MALLOC (numForests * sizeof (sForest_t*));
 
 	int_t numRForests = SUPERLU_MAX( (1 << (maxLvl - 1)) - 1, 1) ;
-	rForest_t*  rForests = SUPERLU_MALLOC (numRForests * sizeof (rForest_t));
+	rForest_t*  rForests = (rForest_t *)SUPERLU_MALLOC (numRForests * sizeof (rForest_t));
 
 	// intialize rfortes[0]
 	int_t nRootTrees = 0;
@@ -930,7 +930,7 @@ sForest_t**  getOneLevelBalForests( int_t maxLvl, int_t nsupers, int_t * setree,
 	sForest_t**  sForests = (sForest_t** ) SUPERLU_MALLOC (numForests * sizeof (sForest_t*));
 
 	int_t numRForests = SUPERLU_MAX( (1 << (maxLvl - 1)) - 1, 1) ;
-	rForest_t*  rForests = SUPERLU_MALLOC (numRForests * sizeof (rForest_t));
+	rForest_t*  rForests = (rForest_t *)SUPERLU_MALLOC (numRForests * sizeof (rForest_t));
 
 	// intialize rfortes[0]
 	int_t nRootTrees = 0;
@@ -1025,11 +1025,11 @@ int* getBrecvTree(int_t nlb, sForest_t* sforest,  int* bmod, gridinfo_t * grid)
 
 
 
-    int* mod_bit = SUPERLU_MALLOC(sizeof(int) * nlb);
+    int* mod_bit = (int *)SUPERLU_MALLOC(sizeof(int) * nlb);
     for (int_t k = 0; k < nlb; ++k)
         mod_bit[k] = 0;
 
-    int* brecv = SUPERLU_MALLOC(sizeof(int) * nlb);
+    int* brecv = (int *)SUPERLU_MALLOC(sizeof(int) * nlb);
 
 
     for (int_t k0 = 0; k0 < nnodes ; ++k0)
@@ -1065,11 +1065,11 @@ int* getBrecvTree_newsolve(int_t nlb, int_t nsupers, int* supernodeMask, int* bm
 
 
 
-    int* mod_bit = SUPERLU_MALLOC(sizeof(int) * nlb);
+    int* mod_bit = (int *)SUPERLU_MALLOC(sizeof(int) * nlb);
     for (int_t k = 0; k < nlb; ++k)
         mod_bit[k] = 0;
 
-    int* brecv = SUPERLU_MALLOC(sizeof(int) * nlb);
+    int* brecv = (int *)SUPERLU_MALLOC(sizeof(int) * nlb);
 
 
 	for (int_t k = 0; k < nsupers; ++k)
@@ -1589,7 +1589,7 @@ int* getBmod3d(int_t treeId, int_t nlb, sForest_t* sforest, int_t* xsup,int_t **
     int_t myrow = MYROW (iam, grid);
     // int_t mycol = MYCOL (iam, grid);
     // int_t **Ufstnz_br_ptr = Llu->Ufstnz_br_ptr;
-    int* bmod = SUPERLU_MALLOC(sizeof(int) * nlb);
+    int* bmod = (int *) SUPERLU_MALLOC(sizeof(int) * nlb);
 
     for (int_t k = 0; k < nlb; ++k)
         bmod[k] = 0;
@@ -1652,7 +1652,7 @@ int* getBmod3d_newsolve(int_t nlb, int_t nsupers, int* supernodeMask, int_t* xsu
     int_t myrow = MYROW (iam, grid);
     // int_t mycol = MYCOL (iam, grid);
     // int_t **Ufstnz_br_ptr = Llu->Ufstnz_br_ptr;
-    int* bmod = SUPERLU_MALLOC(sizeof(int) * nlb);
+    int* bmod = (int *)SUPERLU_MALLOC(sizeof(int) * nlb);
 
     for (int_t k = 0; k < nlb; ++k)
         bmod[k] = 0;

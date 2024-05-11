@@ -25,7 +25,7 @@ void validateInput_psgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
      int ldb, int nrhs, gridinfo3d_t *grid3d, int *info)
 {
     gridinfo_t *grid = &(grid3d->grid2d);
-    NRformat_loc *Astore = A->Store;
+    NRformat_loc *Astore = (NRformat_loc *)A->Store;
     int Fact = options->Fact;
     if (Fact < 0 || Fact > FACTORED)
         *info = -1;

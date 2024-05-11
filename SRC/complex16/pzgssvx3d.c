@@ -616,14 +616,14 @@ int zcheckLUFromDisk(int nsupers, int_t *xsup, zLUstruct_t *LUstruct)
 void zDumpLblocks3D(int_t nsupers, gridinfo3d_t *grid3d,
 		  Glu_persist_t *Glu_persist, zLocalLU_t *Llu)
 {
-    register int c, extra, gb, j, i, lb, nsupc, nsupr, len, nb, ncb;
+    int c, extra, gb, j, i, lb, nsupc, nsupr, len, nb, ncb;
     int k, mycol, r, n, nmax;
     int_t nnzL;
     int_t *xsup = Glu_persist->xsup;
     int_t *index;
     doublecomplex *nzval;
 	char filename[256];
-	FILE *fp, *fopen();
+	FILE *fp;
 	gridinfo_t *grid = &(grid3d->grid2d);
 	int iam = grid->iam;
 	int iam3d = grid3d->iam;
@@ -1081,7 +1081,7 @@ void pzgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 		if (symb_comm != MPI_COMM_NULL)
 			MPI_Comm_free(&symb_comm);
 		if ( Fact != SamePattern_SameRowPerm){
-			LUstruct->trf3Dpart = SUPERLU_MALLOC(sizeof(dtrf3Dpartition_t));
+			LUstruct->trf3Dpart = (ztrf3Dpartition_t *)SUPERLU_MALLOC(sizeof(ztrf3Dpartition_t));
 			// computes the new partition for 3D factorization here
 			trf3Dpartition=LUstruct->trf3Dpart;
 			znewTrfPartitionInit(nsupers, LUstruct, grid3d);

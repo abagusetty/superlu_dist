@@ -5358,7 +5358,7 @@ static int_t *
 intCalloc_symbfact(int_t n)
 {
   int_t *buf;
-  register int_t i;
+  int_t i;
 
   if (n == 0)
     buf = NULL;
