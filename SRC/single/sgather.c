@@ -389,8 +389,8 @@ void sRgather_U( int_t k, int_t jj0, int_t *usub,	float *uval,
     else
 	HyP->bigU_host = bigU + HyP->ldu_Phi * HyP->Ublock_info_Phi[HyP->num_u_blks_Phi - 1].full_u_cols;
 
-    sgather_u(HyP->num_u_blks, HyP->Ublock_info, usub, uval, HyP->bigU_host,
-               (float *)HyP->ldu, xsup, klst );
+    sgather_u(HyP->num_u_blks, HyP->Ublock_info, usub, uval, (float *)HyP->bigU_host,
+               HyP->ldu, xsup, klst );
 
     sgather_u(HyP->num_u_blks_Phi, HyP->Ublock_info_Phi, usub, uval,
                (float *)HyP->bigU_Phi,  HyP->ldu_Phi, xsup, klst );

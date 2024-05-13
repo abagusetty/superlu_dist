@@ -28,6 +28,7 @@
 //#define MAX_BLOCK_SIZE 10000
 #define MAX_NGPU_STREAMS 32
 
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
 static
 void check(gpuError_t result, char const *const func, const char *const file, int const line)
 {
@@ -42,6 +43,7 @@ void check(gpuError_t result, char const *const func, const char *const file, in
 }
 
 #define checkGPUErrors(val)  check ( (val), #val, __FILE__, __LINE__ )
+#endif // #if defined(HAVE_CUDA) || defined(HAVE_HIP)
 
 typedef struct //SCUbuf_gpu_
 {
