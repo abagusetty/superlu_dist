@@ -232,7 +232,7 @@ using gpuDoubleComplex = std::complex<double>;
 #define blockDim_y (item.get_local_range().get(1))
 #define gridDim_x (item.get_group_range(2))
 #define gridDim_y (item.get_group_range(1))
-#define atomicAdd(addr,val) sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>(*addr).fetch_add( val )
+//#define atomicAdd(addr,val) sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>(*addr).fetch_add( val )
 #define atomicSub(addr,val) sycl::atomic_ref<int, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>(*addr).fetch_sub( val )
 #define __threadfence() (sycl::atomic_fence(sycl::memory_order::seq_cst, sycl::memory_scope::device))
 #define __syncthreads() (sycl::group_barrier(sycl::ext::oneapi::experimental::this_group<3>()))

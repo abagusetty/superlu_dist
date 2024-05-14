@@ -317,8 +317,6 @@ if (TPL_ENABLE_CUDALIB)
 
   set(CMAKE_CUDA_FLAGS_DDEBUG "-O0 --expt-relaxed-constexpr -DDEBUG -g" CACHE STRING "")
 
-
-  add_definitions(-DGPU_ACC)
   set( HAVE_CUDA TRUE )
 endif (TPL_ENABLE_CUDALIB)
 
@@ -330,7 +328,6 @@ if (TPL_ENABLE_HIPLIB)
   check_language(HIP)
   enable_language(HIP)
 
-  add_definitions(-DGPU_ACC)
   set( HAVE_HIP TRUE )
 
   # if ("$ENV{HIP_PLATFORM}" STREQUAL "hcc")
@@ -357,7 +354,6 @@ if (TPL_ENABLE_SYCLLIB)   ## want to use SYCL
   # TODO: Fortran is turned off because of linker issues with CXX
   set(XSDK_ENABLE_Fortran OFF)
 
-  add_definitions(-DGPU_ACC)
   set(HAVE_SYCL TRUE)
 
   #include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindoneMKL.cmake)

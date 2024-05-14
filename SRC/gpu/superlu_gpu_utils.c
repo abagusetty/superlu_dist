@@ -81,7 +81,7 @@ typedef int pfx_dtype ;
 #ifdef HAVE_SYCL
 SYCL_EXTERNAL
 #endif
-__device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n)
+__device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n, sycl::nd_item<3>& item)
 {
     // extern __shared__ pfx_dtype temp[];
     int n_original = n;

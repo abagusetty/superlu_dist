@@ -365,16 +365,17 @@ else()
 endif()
 
 
-target_sources(superlu_dist PRIVATE ${SLU_SOURCES} ${SLU_HEADERS})
+target_sources(superlu_dist PRIVATE ${SLU_GPU_SOURCES} ${SLU_SOURCES} ${SLU_HEADERS})
 set(targets superlu_dist)
 target_compile_features(superlu_dist PUBLIC c_std_99)
 
 if (BUILD_SHARED_LIBS AND BUILD_STATIC_LIBS)
   # build both shared and static libs
-  target_sources(superlu_dist-static PRIVATE ${SLU_SOURCES} ${SLU_HEADERS})
+  target_sources(superlu_dist-static PRIVATE ${SLU_GPU_SOURCES} ${SLU_SOURCES} ${SLU_HEADERS})
   target_compile_features(superlu_dist-static PUBLIC c_std_99)
   list(APPEND targets superlu_dist-static)
 endif()
+
 
 if (TPL_ENABLE_NVSHMEM)
 set(superlu_dist_libs ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES} ${BLAS_LIB} ${LAPACK_LIB}
@@ -408,9 +409,11 @@ foreach(target ${targets})
   endif()
 endforeach(target)
 
+
 if (TPL_ENABLE_CUDALIB)
   find_package( CUDAToolkit REQUIRED )
   set_source_files_properties(${SLU_GPU_SOURCES} PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(${SLU_GPU_SOURCES} PROPERTIES COMPILE_FLAGS -DGPU_ACC)
   target_link_libraries( superlu_dist CUDA::cudart CUDA::cublas )
 endif (TPL_ENABLE_CUDALIB)
 
@@ -419,11 +422,14 @@ if (TPL_ENABLE_HIPLIB)
   find_package(hipblas REQUIRED)
   find_package(rocblas REQUIRED)
   set_source_files_properties(${SLU_GPU_SOURCES} PROPERTIES LANGUAGE HIP)
+  set_source_files_properties(${SLU_GPU_SOURCES} PROPERTIES COMPILE_FLAGS -DGPU_ACC)
   target_link_libraries( superlu_dist hip::device roc::hipblas roc::rocblas )
 endif (TPL_ENABLE_HIPLIB)
 
 if (TPL_ENABLE_SYCLLIB)
-  set_source_files_properties(${SLU_SOURCES} ${SLU_GPU_SOURCES} PROPERTIES LANGUAGE CXX)
+  message("echo SYCLIB is defined here !!!!! : ${SLU_GPU_SOURCES}")
+  set_source_files_properties(${SLU_GPU_SOURCES} PROPERTIES LANGUAGE CXX)
+  set_source_files_properties(${SLU_GPU_SOURCES} PROPERTIES COMPILE_FLAGS -DGPU_ACC)
 endif (TPL_ENABLE_SYCLLIB)
 
 # This is recommended by modern cmake:
@@ -435,6 +441,7 @@ if(OpenMP_FOUND) # this is found in top-level CMakeLists.txt
     target_link_libraries(superlu_dist OpenMP::OpenMP_C)
   endif()
 endif()
+
 
 if (XSDK_ENABLE_Fortran)
 ## target_link_libraries(superlu_dist PUBLIC MPI::MPI_CXX MPI::MPI_C MPI::MPI_Fortran)
