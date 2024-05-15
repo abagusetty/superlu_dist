@@ -234,7 +234,7 @@ void Scatter_GPU_kernel(
 
         typedef int pfx_dtype ;
         #ifdef HAVE_SYCL
-        extern SYCL_EXTERNAL __device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n, sycl::nd_item<3> item);
+        extern SYCL_EXTERNAL __device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n, sycl::nd_item<3>& item);
         #else
         extern  __device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n);
         #endif
@@ -713,7 +713,7 @@ int dSchurCompUpdate_GPU(
                         cgh.parallel_for(sycl::nd_range<3>(global_range, dimBlock),
                                          [=](sycl::nd_item<3> item) {
                                            Scatter_GPU_kernel(streamId, ii_st, ii_end,  jj_st, jj_end, klst,
-                                                              0, nrows, ldt, npcol, nprow, dA_gpu, item, localmem.get_pointer());
+                                                              0, nrows, ldt, npcol, nprow, dA_gpu, item, localmem.get_multi_ptr<sycl::access::decorated::yes>().get());
                                          });
                     });
                     #else
