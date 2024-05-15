@@ -79,7 +79,7 @@ private:
   mutable std::mutex m_mutex;
 
   dev_mgr() {
-    sycl::device dev(sycl::gpu_selector_v);
+    sycl::device dev;
     _queues.push_back(new sycl::queue(dev, asyncHandler, sycl::property_list{sycl::property::queue::in_order{}}));
   }
 
@@ -87,7 +87,6 @@ private:
     if(id >= _queues.size()) { throw std::runtime_error("invalid device id"); }
   }
 
-  // Note: only 1 out-of-order SYCL queue is created per device
   std::vector<sycl::queue*> _queues;
 
   /// DEFAULT_DEVICE_ID is used, if current_device() can not find current

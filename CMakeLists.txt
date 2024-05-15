@@ -188,6 +188,11 @@ endif()
 
 #---- CUDA libraries
 if (TPL_ENABLE_CUDALIB)   ## want to use cuda
+  # unsets previous CXX standard and sets CXX to std++14
+  # Required for THRUST_COMPILER_DEFINITIONS
+  unset(CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+  
   check_language(CUDA)
   if(CMAKE_CUDA_COMPILER)
     message("-- Enabled support for CUDA.")
@@ -317,6 +322,7 @@ if (TPL_ENABLE_CUDALIB)
 
   set(CMAKE_CUDA_FLAGS_DDEBUG "-O0 --expt-relaxed-constexpr -DDEBUG -g" CACHE STRING "")
 
+  #add_definitions(-DGPU_ACC)  
   set( HAVE_CUDA TRUE )
 endif (TPL_ENABLE_CUDALIB)
 
@@ -328,6 +334,7 @@ if (TPL_ENABLE_HIPLIB)
   check_language(HIP)
   enable_language(HIP)
 
+  #add_definitions(-DGPU_ACC)  
   set( HAVE_HIP TRUE )
 
   # if ("$ENV{HIP_PLATFORM}" STREQUAL "hcc")
@@ -347,13 +354,14 @@ if (TPL_ENABLE_SYCLLIB)   ## want to use SYCL
   set(CMAKE_CXX_STANDARD 17)
 
   # set SYCL flags
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-expected-file-type -fsycl -sycl-std=2020 -fsycl-unnamed-lambda -fsycl-device-code-split=per_kernel")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-expected-file-type -fsycl -sycl-std=2020 -fgpu-inline-threshold=100000 -Xsycl-target-frontend -O3 -Xsycl-target-frontend -ffp-contract=on -ffp-model=precise -fsycl-unnamed-lambda -fsycl-device-code-split=per_kernel")
 
   message("-- Enabled support for SYCL.")
 
   # TODO: Fortran is turned off because of linker issues with CXX
   set(XSDK_ENABLE_Fortran OFF)
 
+  #add_definitions(-DGPU_ACC)
   set(HAVE_SYCL TRUE)
 
   #include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindoneMKL.cmake)

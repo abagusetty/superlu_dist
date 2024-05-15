@@ -887,30 +887,6 @@ int_t get_max_buffer_size()
 }
 #endif
 
-int_t
-get_gpublas_nb ()
-{
-    char *ttemp;
-    ttemp = getenv ("GPUBLAS_NB");
-    if (ttemp)
-        return atoi(ttemp);
-    else
-        return 512;     // 64 
-}
-
-int_t
-get_num_gpu_streams ()
-{
-    char *ttemp;
-    ttemp = getenv ("SUPERLU_NUM_GPU_STREAMS");
-    if (ttemp)
-        return atoi(ttemp);
-    else if (getenv ("NUM_GPU_STREAMS")) 
-        return atoi(getenv ("NUM_GPU_STREAMS"));   
-    else
-        return 8;
-}
-
 int_t get_min(int_t *sums, int_t nprocs)
 {
     int_t min_ind, min_val;
@@ -1484,9 +1460,6 @@ gemm_division_cpu_gpu(
 	
 } /* gemm_division_cpu_gpu */
 
-
-#endif  /* defined GPU_ACC */
-
 /* The following are moved from superlu_gpu.cu */
 
 int getnGPUStreams()
@@ -1519,3 +1492,28 @@ int get_mpi_process_per_gpu ()
       }
 }
 
+int_t
+get_gpublas_nb ()
+{
+    char *ttemp;
+    ttemp = getenv ("GPUBLAS_NB");
+    if (ttemp)
+        return atoi(ttemp);
+    else
+        return 512;     // 64 
+}
+
+int_t
+get_num_gpu_streams ()
+{
+    char *ttemp;
+    ttemp = getenv ("SUPERLU_NUM_GPU_STREAMS");
+    if (ttemp)
+        return atoi(ttemp);
+    else if (getenv ("NUM_GPU_STREAMS")) 
+        return atoi(getenv ("NUM_GPU_STREAMS"));   
+    else
+        return 8;
+}
+
+#endif  /* defined GPU_ACC */

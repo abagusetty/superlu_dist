@@ -222,12 +222,20 @@ if ( msg0 && msg2 ) {  /* L(:,k) and U(k,:) are not empty. */
 		    		    gpuMemcpyHostToDevice, streams[stream_id]);
 
                     #ifdef HAVE_SYCL
+                    /* dgemm_("N", "N", &nbrow, &num_col_stream, &ldu, &alpha, */
+                    /*        &lusup[luptr+(knsupc-ldu)*nsupr], &nsupr, */
+                    /*        tempu+ldu*st_col, &ldu, &beta, tempv1, &nbrow); */
+
+                    
+                    double *temp_dB = dB + b_offset;
+                    double *temp_dC = dC + c_offset;
+                    std::cout << "values from the print:" << stream_id << ", " << nbrow << ", " << num_col_stream << ", " << ldu << ", " << alpha << ", " << nbrow << ", " << beta << ", " << b_offset << ", " << c_offset << ", " << streams[stream_id] << std::endl;
                     oneapi::mkl::blas::column_major::gemm(*streams[stream_id],
                                             GPUBLAS_OP_N, GPUBLAS_OP_N,
                                             nbrow, num_col_stream, ldu,
                                             alpha, dA, nbrow,
-                                            &dB[b_offset], ldu,
-                                            beta, &dC[c_offset],
+                                            temp_dB, ldu,
+                                            beta, temp_dC,
                                             nbrow);
                     #else
 		    gpublasCheckErrors(
@@ -251,12 +259,12 @@ if ( msg0 && msg2 ) {  /* L(:,k) and U(k,:) are not empty. */
 					   gpuMemcpyDeviceToHost,
 					   streams[stream_id]) );
 #else /*-- on CPU --*/
-		} else { // num_col_stream == 0  Sherry: how can get here?
-                    // Sherry: looks like a batched GEMM
+		} else { num_col_stream == 0  Sherry: how can get here?
+                    /* Sherry: looks like a batched GEMM */
 	            my_dgemm_("N", "N", &nbrow, &num_col_stream, &ldu,
-			      &alpha, &lusup[luptr+(knsupc-ldu)*nsupr],
-			      &nsupr, tempu+ldu*st_col, &ldu, &beta,
-			      tempv1, &nbrow, 1, 1);
+		              &alpha, &lusup[luptr+(knsupc-ldu)*nsupr],
+		              &nsupr, tempu+ldu*st_col, &ldu, &beta,
+		              tempv1, &nbrow, 1, 1);
 	        }
 #endif /*-- end ifdef GPU_ACC --*/
 

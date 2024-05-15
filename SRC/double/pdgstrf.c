@@ -110,12 +110,12 @@ at the top-level directory.
 
 #include <math.h>
 #include "superlu_ddefs.h"
-#include "gpu_api_utils.h"
 
-#ifdef GPU_ACC
-// #define NUM_GPU_STREAMS 16
-// #define NUM_GPU_STREAMS 16
-#endif
+/* #ifdef GPU_ACC */
+/* extern "C" void gemm_division_cpu_gpu (superlu_dist_options_t *, */
+/* 				   int *, int *, int *, int, */
+/* 				   int, int, int *, int, int_t); */
+/* #endif */
 
 /* Various defininations     */
 /*
@@ -908,6 +908,7 @@ pdgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
             // somehow segfault
             #ifdef HAVE_SYCL
             streams[i] = new sycl::queue( sycl_get_queue()->get_context(), sycl_get_queue()->get_device(), asyncHandler, sycl::property_list{sycl::property::queue::in_order{}} );
+            std::cout << "creating streams here at pdgstrf.c: " << streams[i] << std::endl;
             #else
             checkGPU( gpuStreamCreate(&streams[i]) );
             #endif

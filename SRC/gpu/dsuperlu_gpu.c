@@ -939,11 +939,15 @@ int dinitSluGPU3D_t(
 	}
     }
 
+    std::cout << "1. Copystream in dsuperlu_gpu.c\n";
     gpuStreamCreate(&(sluGPU->CopyStream));
+    std::cout << "2. Copystream in dsuperlu_gpu.c\n";    
 
     for (int streamId = 0; streamId < sluGPU->nGPUStreams; streamId++)
     {
+        std::cout << "1. funCallStreams in dsuperlu_gpu.c\n";
 	gpuStreamCreate(&(sluGPU->funCallStreams[streamId]));
+        std::cout << "2. funCallStreams in dsuperlu_gpu.c\n";
         #ifndef HAVE_SYCL
 	gpublasCreate(&(sluGPU->gpublasHandles[streamId]));
         #endif

@@ -22,9 +22,6 @@ at the top-level directory.
  */
 
 #include "superlu_ddefs.h"
-#ifdef GPU_ACC
-#include "gpu_api_utils.h"
-#endif
 
 /*! \brief
  *

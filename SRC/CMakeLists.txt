@@ -59,7 +59,6 @@ set(SLU_SOURCES
   prec-independent/comm.c
   prec-independent/memory.c
   prec-independent/util.c
-  prec-independent/gpu_api_utils.c
   prec-independent/superlu_grid.c
   prec-independent/pxerr_dist.c
   prec-independent/superlu_timer.c
@@ -82,6 +81,13 @@ set(SLU_SOURCES
   prec-independent/sec_structs.c
   prec-independent/get_perm_c_batch.c
 )
+
+if (TPL_ENABLE_CUDALIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
+  set(SLU_GPU_SOURCES
+    prec-independent/gpu_api_utils.c
+    prec-independent/util.c
+  )
+endif()
 
 # Add all the BLAS routines: CplusplusFactor/supelu_blas.hpp needs all
 list(APPEND SLU_SOURCES
@@ -154,18 +160,26 @@ if(enable_double)
     double/dtrfAux.c
     double/dcommunication_aux.c
     double/dtrfCommWrapper.c
-    double/dsuperlu_blas.c
     double/pdgssvx3d_csc_batch.c # batch in CSC format
     double/dequil_batch.c # batch in CSC format
     double/dpivot_batch.c
   )
 
 if (TPL_ENABLE_CUDALIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
-  set(SLU_GPU_SOURCES gpu/pdgstrs_lsum_gpu.c gpu/superlu_gpu_utils.c gpu/dsuperlu_gpu.c)
+  list(APPEND SLU_GPU_SOURCES
+    gpu/pdgstrs_lsum_gpu.c
+    gpu/superlu_gpu_utils.c
+    gpu/dsuperlu_gpu.c
+    double/pdgstrs.c
+    double/pdgstrs3d.c
+    double/pdgssvx.c
+    double/pdgstrf.c
+    #double/pdgstrf3d.c
+  )
 endif()
 
 if (TPL_ENABLE_CUDALIB)
-  list(APPEND SLU_SOURCES
+  set(APPEND SLU_CUDA_ONLY_SOURCES
 ##       CplusplusFactor/schurCompUpdate.cu
 #       CplusplusFactor/pdgstrf3d_upacked.cpp
 #       CplusplusFactor/dsparseTreeFactor_upacked.cpp
@@ -183,7 +197,7 @@ if (TPL_ENABLE_CUDALIB)
        CplusplusFactor/LUgpuCHandle_interface_impl.cu
        CplusplusFactor/batch_factorize.cu
        CplusplusFactor/batch_block_copy.cu
-  )
+     )
 endif()
 
 if (HAVE_COMBBLAS)
@@ -251,7 +265,6 @@ if(enable_single)
     single/strfAux.c
     single/scommunication_aux.c
     single/strfCommWrapper.c
-    single/ssuperlu_blas.c
     single/psgssvx_d2.c     # with double-precision IR
     single/psgsrfs_d2.c
     single/psgsmv_d2.c
@@ -261,7 +274,15 @@ if(enable_single)
     single/spivot_batch.c
   )
 if (TPL_ENABLE_CUDALIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
-    list(APPEND SLU_GPU_SOURCES gpu/psgstrs_lsum_gpu.c gpu/ssuperlu_gpu.c)
+  list(APPEND SLU_GPU_SOURCES
+    gpu/psgstrs_lsum_gpu.c
+    gpu/ssuperlu_gpu.c
+    single/psgstrs.c
+    single/psgstrs3d.c
+    single/psgssvx.c
+    single/psgstrf.c
+    #single/psgstrf3d.c
+  )
 endif()
 if (HAVE_COMBBLAS)
    if (enable_double)
@@ -332,13 +353,20 @@ if(enable_complex16)
       complex16/ztrfAux.c
       complex16/zcommunication_aux.c
       complex16/ztrfCommWrapper.c
-      complex16/zsuperlu_blas.c
       complex16/pzgssvx3d_csc_batch.c # batch in CSC format
       complex16/zequil_batch.c # batch in CSC format
       complex16/zpivot_batch.c
      )
 if (TPL_ENABLE_GPULIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
-    list(APPEND SLU_GPU_SOURCES gpu/pzgstrs_lsum_gpu.c gpu/zsuperlu_gpu.c)
+  list(APPEND SLU_GPU_SOURCES
+    gpu/pzgstrs_lsum_gpu.c
+    gpu/zsuperlu_gpu.c
+    complex16/pzgstrs.c
+    complex16/pzgstrs3d.c
+    complex16/pzgssvx.c
+    complex16/pzgstrf.c
+    complex16/pzgstrf3d.c
+  )
 endif()
 if (HAVE_COMBBLAS)
     list(APPEND SLU_SOURCES
@@ -412,9 +440,9 @@ endforeach(target)
 
 if (TPL_ENABLE_CUDALIB)
   find_package( CUDAToolkit REQUIRED )
-  set_source_files_properties(${SLU_GPU_SOURCES} PROPERTIES LANGUAGE CUDA)
-  set_source_files_properties(${SLU_GPU_SOURCES} PROPERTIES COMPILE_FLAGS -DGPU_ACC)
-  target_link_libraries( superlu_dist CUDA::cudart CUDA::cublas )
+  set_source_files_properties(${SLU_CUDA_ONLY_SOURCES} ${SLU_GPU_SOURCES} PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(${SLU_CUDA_ONLY_SOURCES} ${SLU_GPU_SOURCES} PROPERTIES COMPILE_FLAGS -DGPU_ACC)
+  target_link_libraries( superlu_dist CUDA::cudart CUDA::cublas CUDA::cusolver )
 endif (TPL_ENABLE_CUDALIB)
 
 if (TPL_ENABLE_HIPLIB)
@@ -430,6 +458,7 @@ if (TPL_ENABLE_SYCLLIB)
   message("echo SYCLIB is defined here !!!!! : ${SLU_GPU_SOURCES}")
   set_source_files_properties(${SLU_GPU_SOURCES} PROPERTIES LANGUAGE CXX)
   set_source_files_properties(${SLU_GPU_SOURCES} PROPERTIES COMPILE_FLAGS -DGPU_ACC)
+  set_target_properties( superlu_dist PROPERTIES LINKER_LANGUAGE CXX)
 endif (TPL_ENABLE_SYCLLIB)
 
 # This is recommended by modern cmake:

@@ -235,8 +235,16 @@ using gpuDoubleComplex = std::complex<double>;
 //#define atomicAdd(addr,val) sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>(*addr).fetch_add( val )
 #define atomicSub(addr,val) sycl::atomic_ref<int, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>(*addr).fetch_sub( val )
 #define __threadfence() (sycl::atomic_fence(sycl::memory_order::seq_cst, sycl::memory_scope::device))
+
+// the date 20240207 is the build date of oneapi/eng-compiler/2024.04.15.002
+#if (defined(__SYCL_COMPILER_VERSION) && __SYCL_COMPILER_VERSION > 20240227)
+#define __syncthreads() (sycl::group_barrier(sycl::ext::oneapi::this_work_item::get_work_group<3>()))
+#define __syncwarp() (sycl::group_barrier(sycl::ext::oneapi::this_work_item::get_sub_group()))
+#else
 #define __syncthreads() (sycl::group_barrier(sycl::ext::oneapi::experimental::this_group<3>()))
 #define __syncwarp() (sycl::group_barrier(sycl::ext::oneapi::experimental::this_sub_group()))
+#endif // SYCL_COMPILER_VERSION
+
 
 #define gpuGetDeviceCount syclGetDeviceCount
 #define gpuSetDevice syclSetDevice
