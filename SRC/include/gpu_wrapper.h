@@ -1,9 +1,9 @@
 /*! \file
 Copyright (c) 2003, The Regents of the University of California, through
-Lawrence Berkeley National Laboratory (subject to receipt of any required 
-approvals from U.S. Dept. of Energy) 
+Lawrence Berkeley National Laboratory (subject to receipt of any required
+approvals from U.S. Dept. of Energy)
 
-All rights reserved. 
+All rights reserved.
 
 The source code is distributed under BSD license, see the file License.txt
 at the top-level directory.
@@ -26,7 +26,7 @@ at the top-level directory.
 #include "cuda.h"
 #include "cuda_runtime_api.h"
 #include "cuda_runtime.h"
-#include <cusparse.h>				 
+#include <cusparse.h>
 #include <cuda_profiler_api.h>
 
 #define gpuDeviceProp cudaDeviceProp
@@ -69,17 +69,17 @@ at the top-level directory.
 #define gpuMallocHost cudaMallocHost
 #define gpuEvent_t cudaEvent_t
 #define gpuMemset cudaMemset
-#define  GPUBLAS_STATUS_SUCCESS CUBLAS_STATUS_SUCCESS 
-#define  GPUBLAS_STATUS_NOT_INITIALIZED CUBLAS_STATUS_NOT_INITIALIZED 
-#define  GPUBLAS_STATUS_ALLOC_FAILED CUBLAS_STATUS_ALLOC_FAILED 
-#define  GPUBLAS_STATUS_INVALID_VALUE CUBLAS_STATUS_INVALID_VALUE 
-#define  GPUBLAS_STATUS_ARCH_MISMATCH CUBLAS_STATUS_ARCH_MISMATCH 
-#define  GPUBLAS_STATUS_MAPPING_ERROR CUBLAS_STATUS_MAPPING_ERROR 
-#define  GPUBLAS_STATUS_EXECUTION_FAILED CUBLAS_STATUS_EXECUTION_FAILED 
-#define  GPUBLAS_STATUS_INTERNAL_ERROR CUBLAS_STATUS_INTERNAL_ERROR 
-#define  GPUBLAS_STATUS_LICENSE_ERROR CUBLAS_STATUS_LICENSE_ERROR 
-#define  GPUBLAS_STATUS_NOT_SUPPORTED CUBLAS_STATUS_NOT_SUPPORTED 
-#define  gpublasCreate cublasCreate 
+#define  GPUBLAS_STATUS_SUCCESS CUBLAS_STATUS_SUCCESS
+#define  GPUBLAS_STATUS_NOT_INITIALIZED CUBLAS_STATUS_NOT_INITIALIZED
+#define  GPUBLAS_STATUS_ALLOC_FAILED CUBLAS_STATUS_ALLOC_FAILED
+#define  GPUBLAS_STATUS_INVALID_VALUE CUBLAS_STATUS_INVALID_VALUE
+#define  GPUBLAS_STATUS_ARCH_MISMATCH CUBLAS_STATUS_ARCH_MISMATCH
+#define  GPUBLAS_STATUS_MAPPING_ERROR CUBLAS_STATUS_MAPPING_ERROR
+#define  GPUBLAS_STATUS_EXECUTION_FAILED CUBLAS_STATUS_EXECUTION_FAILED
+#define  GPUBLAS_STATUS_INTERNAL_ERROR CUBLAS_STATUS_INTERNAL_ERROR
+#define  GPUBLAS_STATUS_LICENSE_ERROR CUBLAS_STATUS_LICENSE_ERROR
+#define  GPUBLAS_STATUS_NOT_SUPPORTED CUBLAS_STATUS_NOT_SUPPORTED
+#define  gpublasCreate cublasCreate
 #define  gpublasDestroy cublasDestroy
 #define  gpublasHandle_t cublasHandle_t
 #define  gpublasSetStream cublasSetStream
@@ -116,7 +116,7 @@ at the top-level directory.
 
 #elif defined(HAVE_HIP)
 
-#ifndef __HIP_PLATFORM_AMD__ 
+#ifndef __HIP_PLATFORM_AMD__
 #define __HIP_PLATFORM_AMD__
 #endif
 
@@ -138,7 +138,7 @@ at the top-level directory.
 #define gpuGetErrorString hipGetErrorString
 #define gpuMalloc hipMalloc
 #define gpuHostMalloc hipHostMalloc
-#define gpuHostMallocDefault hipHostMallocDefault  
+#define gpuHostMallocDefault hipHostMallocDefault
 #define gpuMallocManaged hipMallocManaged
 #define gpuStream_t hipStream_t
 #define gpuStreamCreate hipStreamCreate
@@ -168,17 +168,17 @@ at the top-level directory.
 #define gpuMallocHost hipHostMalloc
 #define gpuEvent_t hipEvent_t
 #define gpuMemset hipMemset
-#define  GPUBLAS_STATUS_SUCCESS HIPBLAS_STATUS_SUCCESS 
-#define  GPUBLAS_STATUS_NOT_INITIALIZED HIPBLAS_STATUS_NOT_INITIALIZED 
-#define  GPUBLAS_STATUS_ALLOC_FAILED HIPBLAS_STATUS_ALLOC_FAILED 
-#define  GPUBLAS_STATUS_INVALID_VALUE HIPBLAS_STATUS_INVALID_VALUE 
-#define  GPUBLAS_STATUS_ARCH_MISMATCH HIPBLAS_STATUS_ARCH_MISMATCH 
-#define  GPUBLAS_STATUS_MAPPING_ERROR HIPBLAS_STATUS_MAPPING_ERROR 
-#define  GPUBLAS_STATUS_EXECUTION_FAILED HIPBLAS_STATUS_EXECUTION_FAILED 
-#define  GPUBLAS_STATUS_INTERNAL_ERROR HIPBLAS_STATUS_INTERNAL_ERROR 
-#define  GPUBLAS_STATUS_LICENSE_ERROR HIPBLAS_STATUS_LICENSE_ERROR 
-#define  GPUBLAS_STATUS_NOT_SUPPORTED HIPBLAS_STATUS_NOT_SUPPORTED 
-#define  gpublasCreate hipblasCreate 
+#define  GPUBLAS_STATUS_SUCCESS HIPBLAS_STATUS_SUCCESS
+#define  GPUBLAS_STATUS_NOT_INITIALIZED HIPBLAS_STATUS_NOT_INITIALIZED
+#define  GPUBLAS_STATUS_ALLOC_FAILED HIPBLAS_STATUS_ALLOC_FAILED
+#define  GPUBLAS_STATUS_INVALID_VALUE HIPBLAS_STATUS_INVALID_VALUE
+#define  GPUBLAS_STATUS_ARCH_MISMATCH HIPBLAS_STATUS_ARCH_MISMATCH
+#define  GPUBLAS_STATUS_MAPPING_ERROR HIPBLAS_STATUS_MAPPING_ERROR
+#define  GPUBLAS_STATUS_EXECUTION_FAILED HIPBLAS_STATUS_EXECUTION_FAILED
+#define  GPUBLAS_STATUS_INTERNAL_ERROR HIPBLAS_STATUS_INTERNAL_ERROR
+#define  GPUBLAS_STATUS_LICENSE_ERROR HIPBLAS_STATUS_LICENSE_ERROR
+#define  GPUBLAS_STATUS_NOT_SUPPORTED HIPBLAS_STATUS_NOT_SUPPORTED
+#define  gpublasCreate hipblasCreate
 #define  gpublasDestroy hipblasDestroy
 #define  gpublasHandle_t hipblasHandle_t
 #define  gpublasSetStream hipblasSetStream
@@ -221,8 +221,8 @@ at the top-level directory.
 #define __global__
 #define __device__
 #define checkGPUErrors
-#define gpuMemcpyHostToDevice
-#define gpuMemcpyDeviceToHost
+#define gpuMemcpyHostToDevice 0
+#define gpuMemcpyDeviceToHost 0
 using gpuDoubleComplex = std::complex<double>;
 #define threadIdx_x (item.get_local_id(2))
 #define threadIdx_y (item.get_local_id(1))
@@ -253,7 +253,11 @@ using gpuDoubleComplex = std::complex<double>;
 
 #define gpuMemcpy(dst, src, size, kind) (sycl_get_queue()->memcpy(dst, src, size).wait())
 #define gpuDeviceSynchronize() (sycl_get_queue()->wait())
-#define gpuMemcpyAsync(dst, src, count, kind, stream) (stream->memcpy(dst, src, count))
+#define gpuMemcpyAsync(dst, src, count, kind, stream) ((stream)->memcpy((dst), (src), (count)).wait())
+
+/* #define gpuMemcpyAsync(dst, src, count, kind, stream) do {                                 \ */
+/*     ((stream)->memcpy((dst), (src), (count)));                          \ */
+/* } while(0) */
 #define gpuMemset(ptr, val, size) (sycl_get_queue()->memset(ptr, val, size).wait())
 #define gpuMemGetInfo(free, total) do {                                 \
     *free = sycl_get_queue()->get_device().get_info<sycl::ext::intel::info::device::free_memory>(); \
@@ -282,7 +286,7 @@ using gpuEvent_t = sycl::event*;
 
 #define checkGPUblas(fn)
 #define checkGPU(fn)
-
+//#define gpuGetLastError(fn)
 #define gpublasCheckErrors(fn)						\
 do {									\
         try {								\

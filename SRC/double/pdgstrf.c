@@ -111,12 +111,6 @@ at the top-level directory.
 #include <math.h>
 #include "superlu_ddefs.h"
 
-/* #ifdef GPU_ACC */
-/* extern "C" void gemm_division_cpu_gpu (superlu_dist_options_t *, */
-/* 				   int *, int *, int *, int, */
-/* 				   int, int, int *, int, int_t); */
-/* #endif */
-
 /* Various defininations     */
 /*
     Name    : SUPERNODE_PROFILE
@@ -835,14 +829,19 @@ pdgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
 #endif
 
 #ifdef HAVE_SYCL
-        bigU = nullptr;
-        bigU = sycl::malloc_host<double>(size_t(bigu_size), *(sycl_get_queue()));
-        if (bigU == nullptr)
-          ABORT("Malloc fails for dgemm buffer U ");
-        bigV = nullptr;
-        bigV = sycl::malloc_host<double>(size_t(bigv_size), *(sycl_get_queue()));
-        if (bigV == nullptr)
-          ABORT("Malloc fails for dgemm buffer V");
+    bigU = nullptr;
+    bigU = new double[size_t(bigu_size)];
+    bigV = nullptr;
+    bigV = new double[size_t(bigv_size)];
+    
+        /* bigU = nullptr; */
+        /* bigU = sycl::malloc_host<double>(size_t(bigu_size), *(sycl_get_queue())); */
+        /* if (bigU == nullptr) */
+        /*   ABORT("Malloc fails for dgemm buffer U "); */
+        /* bigV = nullptr; */
+        /* bigV = sycl::malloc_host<double>(size_t(bigv_size), *(sycl_get_queue())); */
+        /* if (bigV == nullptr) */
+        /*   ABORT("Malloc fails for dgemm buffer V"); */
 
         // allocate device memory
         dA = nullptr;
@@ -1916,6 +1915,7 @@ pdgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
         // destroy streams before freeing
         for (i = 0; i < nstreams; i++) {
         #ifdef HAVE_SYCL
+            streams[i]->wait();
             delete streams[i];
         #else
             gpuStreamDestroy(streams[i]);

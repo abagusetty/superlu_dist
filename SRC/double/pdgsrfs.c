@@ -230,10 +230,13 @@ pdgsrfs(superlu_dist_options_t *options, int_t n,
 	    }
 	    MPI_Allreduce( &s, &berr[j], 1, MPI_DOUBLE, MPI_MAX, grid->comm );
 
+            printf("a. in PRNTlevel>=1 pdgsrfs call from pdgsrfs.c\n");
 #if ( PRNTlevel>= 1 )
+            printf("in PRNTlevel>=1 pdgsrfs call from pdgsrfs.c\n");
 	    if ( !iam )
 		printf("(%2d) .. Step " IFMT ": berr[j] = %e\n", iam, count, berr[j]);
 #endif
+            printf("b. in PRNTlevel>=1 pdgsrfs call from pdgsrfs.c\n");
 	    if ( berr[j] > eps && berr[j] * 2 <= lstres && count < ITMAX ) {
 		/* Compute new dx. */
 		pdgstrs(options, n, LUstruct, ScalePermstruct, grid,
@@ -511,4 +514,3 @@ if (!grid3d->zscp.Iam){
 #endif
 
 } /* PDGSRFS3D */
-
