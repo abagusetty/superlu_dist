@@ -448,14 +448,6 @@ typedef struct
 #endif  // Above are moved to superlu_defs.h
 
 
-int_t scuStatUpdate(
-    int_t knsupc,
-    HyP_t* HyP,
-    SCT_t* SCT,
-    SuperLUStat_t *stat
-    );
-
-
 
 typedef struct
 {
@@ -494,6 +486,12 @@ typedef struct zlsumBmod_buff_t
 extern "C" {
 #endif
 
+int_t scuStatUpdate(
+    int_t knsupc,
+    HyP_t* HyP,
+    SCT_t* SCT,
+    SuperLUStat_t *stat
+    );
 
 /* Supernodal LU factor related */
 extern void

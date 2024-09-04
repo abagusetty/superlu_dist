@@ -1638,8 +1638,10 @@ pdgssvx(superlu_dist_options_t *options, SuperMatrix *A,
 		}
 	    }
 
+            printf("1. calling from here to pdgsrfs.c from pdgssvx.c \n");
 	    pdgsrfs(options, n, A, anorm, LUstruct, ScalePermstruct, grid,
 		    B, ldb, X, ldx, nrhs, SOLVEstruct1, berr, stat, info);
+            printf("2. calling from here to pdgsrfs.c from pdgssvx.c \n");            
 
             /* Deallocate the storage associated with SOLVEstruct1 */
 	    if ( nrhs > 1 ) {

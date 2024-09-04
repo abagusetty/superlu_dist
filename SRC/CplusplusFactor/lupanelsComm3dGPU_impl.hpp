@@ -1,9 +1,11 @@
 #include "mpi.h"
 // #include "cublasDefs.hhandle, "
 #include "lupanels.hpp"
-#include "cublas_cusolver_wrappers.hpp"
+#ifndef HAVE_SYCL
+#include "gpublas_gpusolver_wrappers.hpp"
+#endif
 
-#ifdef HAVE_CUDA
+#ifdef GPU_ACC
 
 template <typename Ftype>
 int_t xLUstruct_t<Ftype>::ancestorReduction3dGPU(int_t ilvl, int_t *myNodeCount,
@@ -57,7 +59,7 @@ int_t xLUstruct_t<Ftype>::ancestorReduction3dGPU(int_t ilvl, int_t *myNodeCount,
                 zRecvUPanelGPU(k0, sender, alpha, beta);
             }
         }
-        cudaStreamSynchronize(A_gpu.cuStreams[0]) ;
+        gpuStreamSynchronize(A_gpu.cuStreams[0]) ;
         // return 0;
         SCT->ancsReduce += SuperLU_timer_() - treduce;
     }
@@ -89,27 +91,37 @@ int_t xLUstruct_t<Ftype>::zSendLPanelGPU(int_t k0, int_t receiverGrid)
 template <typename Ftype>
 int_t xLUstruct_t<Ftype>::zRecvLPanelGPU(int_t k0, int_t senderGrid, Ftype alpha, Ftype beta)
 {
-    if (mycol == kcol(k0))
-	{
-		int_t lk = g2lCol(k0);
-        if (!lPanelVec[lk].isEmpty())
-		{
+  if (mycol == kcol(k0))
+    {
+      int_t lk = g2lCol(k0);
+      if (!lPanelVec[lk].isEmpty())
+        {
             
-            MPI_Status status;
-			MPI_Recv(A_gpu.LvalRecvBufs[0], lPanelVec[lk].nzvalSize(), get_mpi_type<Ftype>(), senderGrid, k0,
-					 grid3d->zscp.comm, &status);
+          MPI_Status status;
+          MPI_Recv(A_gpu.LvalRecvBufs[0], lPanelVec[lk].nzvalSize(), get_mpi_type<Ftype>(), senderGrid, k0,
+                   grid3d->zscp.comm, &status);
 
-			/*reduce the updates*/
-            cublasHandle_t handle=A_gpu.cuHandles[0];
-            cudaStream_t cuStream = A_gpu.cuStreams[0];
-            cublasSetStream(handle, cuStream);
-            myCublasScal<Ftype>(handle, lPanelVec[lk].nzvalSize(), &alpha, lPanelVec[lk].blkPtrGPU(0), 1);
-            myCublasAxpy<Ftype>(handle, lPanelVec[lk].nzvalSize(), &beta, A_gpu.LvalRecvBufs[0], 1, lPanelVec[lk].blkPtrGPU(0), 1);
-			cudaStreamSynchronize(cuStream);
+          /*reduce the updates*/
+          gpuStream_t cuStream = A_gpu.cuStreams[0];
+          #ifdef HAVE_SYCL
+          if constexpr (std::is_same_v<Ftype, doublecomplex>) {
+            oneapi::mkl::blas::column_major::scal(*cuStream, lPanelVec[lk].nzvalSize(), gpuDoubleComplex(alpha.r, alpha.i), reinterpret_cast<gpuDoubleComplex*>(lPanelVec[lk].blkPtrGPU(0)), 1);
+            oneapi::mkl::blas::column_major::axpy(*cuStream, lPanelVec[lk].nzvalSize(), gpuDoubleComplex(beta.r, beta.i), reinterpret_cast<const gpuDoubleComplex*>(A_gpu.LvalRecvBufs[0]), 1, reinterpret_cast<gpuDoubleComplex*>(lPanelVec[lk].blkPtrGPU(0)), 1);
+          } else {
+            oneapi::mkl::blas::column_major::scal(*cuStream, lPanelVec[lk].nzvalSize(), alpha, lPanelVec[lk].blkPtrGPU(0), 1);
+            oneapi::mkl::blas::column_major::axpy(*cuStream, lPanelVec[lk].nzvalSize(), beta, A_gpu.LvalRecvBufs[0], 1, lPanelVec[lk].blkPtrGPU(0), 1);
+          }
+          #else
+          cublasHandle_t handle=A_gpu.cuHandles[0];
+          cublasSetStream(handle, cuStream);
+          myCublasScal<Ftype>(handle, lPanelVec[lk].nzvalSize(), &alpha, lPanelVec[lk].blkPtrGPU(0), 1);
+          myCublasAxpy<Ftype>(handle, lPanelVec[lk].nzvalSize(), &beta, A_gpu.LvalRecvBufs[0], 1, lPanelVec[lk].blkPtrGPU(0), 1);
+          #endif
+          gpuStreamSynchronize(cuStream);
             
-		}
-	}
-	return 0;
+        }
+    }
+  return 0;
 }
 
 template <typename Ftype>
@@ -132,26 +144,36 @@ int_t xLUstruct_t<Ftype>::zSendUPanelGPU(int_t k0, int_t receiverGrid)
 template <typename Ftype>
 int_t xLUstruct_t<Ftype>::zRecvUPanelGPU(int_t k0, int_t senderGrid, Ftype alpha, Ftype beta)
 {
-    if (myrow == krow(k0))
-	{
-		int_t lk = g2lRow(k0);
-        if (!uPanelVec[lk].isEmpty())
-		{
+  if (myrow == krow(k0))
+    {
+      int_t lk = g2lRow(k0);
+      if (!uPanelVec[lk].isEmpty())
+        {
 
-            MPI_Status status;
-			MPI_Recv(A_gpu.UvalRecvBufs[0], uPanelVec[lk].nzvalSize(), get_mpi_type<Ftype>(), senderGrid, k0,
-					 grid3d->zscp.comm, &status);
+          MPI_Status status;
+          MPI_Recv(A_gpu.UvalRecvBufs[0], uPanelVec[lk].nzvalSize(), get_mpi_type<Ftype>(), senderGrid, k0,
+                   grid3d->zscp.comm, &status);
 
-			/*reduce the updates*/
-            cublasHandle_t handle=A_gpu.cuHandles[0];
-            cudaStream_t cuStream = A_gpu.cuStreams[0];
-            cublasSetStream(handle, cuStream);
-			myCublasScal<Ftype>(handle, uPanelVec[lk].nzvalSize(), &alpha, uPanelVec[lk].blkPtrGPU(0), 1);
-			myCublasAxpy<Ftype>(handle, uPanelVec[lk].nzvalSize(), &beta, A_gpu.UvalRecvBufs[0], 1, uPanelVec[lk].blkPtrGPU(0), 1);
-            cudaStreamSynchronize(cuStream);
-		}
-	}
-	return 0;
+          /*reduce the updates*/
+          gpuStream_t cuStream = A_gpu.cuStreams[0];
+          #ifdef HAVE_SYCL
+          if constexpr (std::is_same_v<Ftype, doublecomplex>) {
+            oneapi::mkl::blas::column_major::scal(*cuStream, uPanelVec[lk].nzvalSize(), gpuDoubleComplex(alpha.r, alpha.i), reinterpret_cast<gpuDoubleComplex*>(uPanelVec[lk].blkPtrGPU(0)), 1);
+            oneapi::mkl::blas::column_major::axpy(*cuStream, uPanelVec[lk].nzvalSize(), gpuDoubleComplex(beta.r, beta.i), reinterpret_cast<const gpuDoubleComplex*>(A_gpu.UvalRecvBufs[0]), 1, reinterpret_cast<gpuDoubleComplex*>(uPanelVec[lk].blkPtrGPU(0)), 1);
+          } else {
+            oneapi::mkl::blas::column_major::scal(*cuStream, uPanelVec[lk].nzvalSize(), alpha, uPanelVec[lk].blkPtrGPU(0), 1);
+            oneapi::mkl::blas::column_major::axpy(*cuStream, uPanelVec[lk].nzvalSize(), beta, A_gpu.UvalRecvBufs[0], 1, uPanelVec[lk].blkPtrGPU(0), 1);
+          }
+          #else
+          gpublasHandle_t handle=A_gpu.cuHandles[0];
+          gpublasSetStream(handle, cuStream);
+          myCublasScal<Ftype>(handle, uPanelVec[lk].nzvalSize(), &alpha, uPanelVec[lk].blkPtrGPU(0), 1);
+          myCublasAxpy<Ftype>(handle, uPanelVec[lk].nzvalSize(), &beta, A_gpu.UvalRecvBufs[0], 1, uPanelVec[lk].blkPtrGPU(0), 1);
+          #endif
+          gpuStreamSynchronize(cuStream);
+        }
+    }
+  return 0;
 }
 
 #endif

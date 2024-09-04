@@ -3933,9 +3933,9 @@ int_t zlasum_bmod_Tree(int_t  pTree, int_t cTree, doublecomplex *lsum, doublecom
 
 int_t zinitLsumBmod_buff(int_t ns, int nrhs, zlsumBmod_buff_t* lbmod_buf)
 {
-    lbmod_buf->tX = SUPERLU_MALLOC(ns * nrhs * sizeof(doublecomplex));
-    lbmod_buf->tU = SUPERLU_MALLOC(ns * ns * sizeof(doublecomplex));
-    lbmod_buf->indCols = SUPERLU_MALLOC(ns * sizeof(int_t));
+    lbmod_buf->tX = (doublecomplex *)SUPERLU_MALLOC(ns * nrhs * sizeof(doublecomplex));
+    lbmod_buf->tU = (doublecomplex *)SUPERLU_MALLOC(ns * ns * sizeof(doublecomplex));
+    lbmod_buf->indCols = (int_t *)SUPERLU_MALLOC(ns * sizeof(int_t));
     return 0;
 }
 
@@ -3949,8 +3949,8 @@ int_t zfreeLsumBmod_buff(zlsumBmod_buff_t* lbmod_buf)
 
 
 int zpackUblock(int ldu, int_t* indCols,
-                 int_t knsupc, int_t iklrow,  int_t* usub,
-                 doublecomplex* tempu, doublecomplex* uval )
+                int_t knsupc, int_t iklrow,  int_t* usub,
+                doublecomplex* tempu, doublecomplex* uval )
 {
     doublecomplex zero = {0.0, 0.0};
     int ncols = 0;
@@ -6732,7 +6732,7 @@ pzgstrs3d (superlu_dist_options_t *options, int_t n, zLUstruct_t * LUstruct,
      * Initializing xT
      */
 
-    int_t* ilsumT = SUPERLU_MALLOC (sizeof(int_t) * (nub + 1));
+    int_t* ilsumT = (int_t *)SUPERLU_MALLOC (sizeof(int_t) * (nub + 1));
     int_t ldaspaT = 0;
     ilsumT[0] = 0;
     for (int_t jb = 0; jb < nsupers; ++jb)

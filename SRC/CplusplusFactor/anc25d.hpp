@@ -5,7 +5,7 @@
 #include "superlu_ddefs.h"
 #include "lu_common.hpp"
 #ifdef HAVE_CUDA
-#include "lupanels_GPU.cuh"
+#include "lupanels_GPU.hpp"
 #endif
 #include "commWrapper.hpp"
 

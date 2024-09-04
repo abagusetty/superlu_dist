@@ -107,14 +107,9 @@ at the top-level directory.
  * </pre>
  */
 
+
 #include <math.h>
 #include "superlu_zdefs.h"
-#include "gpu_api_utils.h"
-
-#ifdef GPU_ACC
-// #define NUM_GPU_STREAMS 16
-// #define NUM_GPU_STREAMS 16
-#endif
 
 /* Various defininations     */
 /*
@@ -248,8 +243,7 @@ pzgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
     _fcd ftcs2 = _cptofcd ("N", strlen ("N"));
     _fcd ftcs3 = _cptofcd ("U", strlen ("U"));
 #endif
-    doublecomplex zero = {0.0, 0.0};
-    doublecomplex alpha = {1.0, 0.0}, beta = {0.0, 0.0};
+    doublecomplex zero = {0.0, 0.0}, alpha = {1.0, 0.0}, beta = {0.0, 0.0};
     int_t *xsup;
     int_t *lsub, *lsub1, *usub, *Usub_buf;
     int_t **Lsub_buf_2, **Usub_buf_2;
@@ -258,7 +252,7 @@ pzgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
     int_t fnz, i, ib, ijb, ilst, it, iukp, jj, klst,
           ldv, lptr, lptr0, lptrj, luptr, luptr0, luptrj,
           nlb, nub, rel, rukp, il, iu;
-    int jb, ljb, nsupc, knsupc, lb, lib;	
+    int jb, ljb, nsupc, knsupc, lb, lib;
     int Pc, Pr;
     int iam, kcol, krow, yourcol, mycol, myrow, pi, pj;
     int j, k, lk, nsupers;  /* k - current panel to work on */
@@ -809,8 +803,10 @@ pzgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
                                      //   get_max_buffer_size());
     doublecomplex *dA, *dB, *dC; // GEMM matrices on device
     int *stream_end_col;
+    #ifndef HAVE_SYCL
     gpuError_t gpuStat;
     gpublasHandle_t *handle;
+    #endif
     gpuStream_t *streams;
 
     if (superlu_acc_offload) {
@@ -819,9 +815,6 @@ pzgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
            used in SchCompUdt-GPU.c         */
         //int *stream_end_col = (int_t *) _mm_malloc (sizeof (int_t) * nstreams,64);
       stream_end_col = (int *)SUPERLU_MALLOC( nstreams * sizeof(int) );
-
-        if ( checkGPU(gpuHostMalloc((void**)&bigU,  bigu_size * sizeof(doublecomplex), gpuHostMallocDefault)) )
-            ABORT("Malloc fails for zgemm buffer U ");
 
 #if 0 // !!Sherry fix -- only dC on GPU uses buffer_size
     bigv_size = buffer_size;
@@ -835,8 +828,20 @@ pzgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
     }
 #endif
 
-        if ( checkGPU(gpuHostMalloc((void**)&bigV, bigv_size * sizeof(doublecomplex), gpuHostMallocDefault)) )
-            ABORT("Malloc fails for zgemm buffer V");
+#if defined(HAVE_CUDA) || defined(HAVE_HIP) || defined(HAVE_SYCL)
+    checkGPUErrors(gpuHostMalloc((void**)&bigU, bigu_size * sizeof(doublecomplex), gpuHostMallocDefault));
+    checkGPUErrors(gpuHostMalloc((void**)&bigV, bigv_size * sizeof(doublecomplex), gpuHostMallocDefault));
+
+    // allocate device memory
+    checkGPUErrors(gpuMalloc((void**)&dA, max_row_size * sp_ienv_dist(3,options) * sizeof(doublecomplex)));
+    checkGPUErrors(gpuMalloc((void**)&dB, bigu_size * sizeof(doublecomplex)));
+    checkGPUErrors(gpuMalloc((void**)&dC, buffer_size * sizeof(doublecomplex)));
+#endif
+
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+    handle = (gpublasHandle_t *) SUPERLU_MALLOC(sizeof(gpublasHandle_t)*nstreams);
+    for (i = 0; i < nstreams; i++) handle[i] = create_handle();
+#endif // CUDA/HIP only
 
     if ( iam==0 && options->PrintStat==YES ) {
         DisplayHeader();
@@ -844,32 +849,9 @@ pzgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
         fflush(stdout);
     }
 
-        handle = (gpublasHandle_t *) SUPERLU_MALLOC(sizeof(gpublasHandle_t)*nstreams);
-        for (i = 0; i < nstreams; i++) handle[i] = create_handle();
-
         // creating streams
         streams = (gpuStream_t *) SUPERLU_MALLOC(sizeof(gpuStream_t)*nstreams);
-        for (i = 0; i < nstreams; ++i)
-            checkGPU( gpuStreamCreate(&streams[i]) );
-
-        gpuStat = gpuMalloc( (void**)&dA, max_row_size * sp_ienv_dist(3,options) * sizeof(doublecomplex));
-        if (gpuStat!= gpuSuccess) {
-            fprintf(stderr, "!!!! Error in allocating A in the device %ld \n",m*k*sizeof(doublecomplex) );
-            return 1;
-        }
-
-        // size of B should be bigu_size
-        gpuStat = gpuMalloc((void**)&dB, bigu_size * sizeof(doublecomplex));
-        if (gpuStat!= gpuSuccess) {
-            fprintf(stderr, "!!!! Error in allocating B in the device %ld \n",n*k*sizeof(doublecomplex));
-            return 1;
-        }
-
-        gpuStat = gpuMalloc((void**)&dC, buffer_size * sizeof(doublecomplex) );
-        if (gpuStat!= gpuSuccess) {
-            fprintf(stderr, "!!!! Error in allocating C in the device \n" );
-            return 1;
-        }
+        for (i = 0; i < nstreams; ++i) checkGPU( gpuStreamCreate(&streams[i]) );
 
         stat->gpu_buffer += dword * ( max_row_size * sp_ienv_dist(3,options) // dA
                                      + bigu_size                     // dB
@@ -1865,8 +1847,13 @@ pzgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
         gpuFree( (void*)dA ); /* Sherry added */
         gpuFree( (void*)dB );
         gpuFree( (void*)dC );
+        #ifndef HAVE_SYCL
         for (i = 0; i < nstreams; i++) destroy_handle(handle[i]);
         SUPERLU_FREE( handle );
+        #endif
+
+        // destroy streams before freeing
+        for (i = 0; i < nstreams; i++) gpuStreamDestroy(streams[i]);
         SUPERLU_FREE( streams );
         SUPERLU_FREE( stream_end_col );
     } else {
@@ -1999,4 +1986,3 @@ pzgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
 
     return 0;
 } /* PZGSTRF */
-

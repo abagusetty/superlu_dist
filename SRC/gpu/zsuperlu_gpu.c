@@ -21,10 +21,6 @@
 
 #include "zlustruct_gpu.h"
 
-// #ifdef HAVE_HIP
-// #include "superlu_gpu_utils.hip.cpp"
-// #endif
-
 #include "dcomplex.h"
 
 //extern "C" {
@@ -689,14 +685,18 @@ int zSchurCompUpdate_GPU(
                     gpublasSetStream(gpublas_handle0, FunCallStream);
                     gpuEventRecord(stat->GemmStart[k0], FunCallStream);
                     gpublasZgemm(gpublas_handle0, GPUBLAS_OP_N, GPUBLAS_OP_N,
-                                    nrows, ncols, ldu, cu_alpha,
-                                    cu_A, Rnbrow, cu_B, ldu, cu_beta,
-                                    cu_C, nrows);
+                                 nrows, ncols, ldu, cu_alpha,
+                                 cu_A, Rnbrow, cu_B, ldu, cu_beta,
+                                 cu_C, nrows);
                     #else
-                    oneapi::mkl::blas::column_major::gemm(*FunCallStream, GPUBLAS_OP_N, GPUBLAS_OP_N,
-                                    nrows, ncols, ldu, alpha,
-                                    cu_A, Rnbrow, cu_B, ldu, beta,
-                                    cu_C, nrows);
+                    oneapi::mkl::blas::column_major::gemm(*FunCallStream,
+                                                          GPUBLAS_OP_N, GPUBLAS_OP_N,
+                                                          std::int64_t(nrows), std::int64_t(ncols), std::int64_t(ldu),
+                                                          gpuDoubleComplex(alpha.r, alpha.i),
+                                                          cu_A, std::int64_t(Rnbrow),
+                                                          cu_B, std::int64_t(ldu),
+                                                          gpuDoubleComplex(beta.r, beta.i),
+                                                          cu_C, std::int64_t(nrows));
                     #endif
 
 // #define SCATTER_OPT

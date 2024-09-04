@@ -4,9 +4,9 @@
 #include <cassert>
 #include "superlu_defs.h"
 #include "luAuxStructTemplated.hpp"
-#ifdef HAVE_CUDA
-#include "lupanels_GPU.cuh"
-#include "xlupanels_GPU.cuh"
+#ifdef GPU_ACC
+#include "lupanels_GPU.hpp"
+#include "xlupanels_GPU.hpp"
 #endif
 #include "lupanels.hpp"  //unneeded??
 #include "xlupanels.hpp"
@@ -45,7 +45,7 @@ int xLUstruct_t<Ftype>::freeDiagFactBufsArr(int_t num_bufs, diagFactBufs_type<Ft
 }
 
 
-#ifdef HAVE_CUDA
+#ifdef GPU_ACC
 template <typename Ftype>
 xupanel_t<Ftype> xLUstruct_t<Ftype>::getKUpanel(int_t k, int_t offset)
 {
@@ -282,12 +282,12 @@ xLUstruct_t<Ftype>::xLUstruct_t(int_t nsupers_, int_t ldt_,
     double tGPU = SuperLU_timer_();
     if(superlu_acc_offload)
     {
-    #ifdef HAVE_CUDA
+    #ifdef GPU_ACC
         setLUstruct_GPU();  /* Set up LU structure and buffers on GPU */
 	
         // TODO: remove it, checking is very slow 
         if(0)
-            checkGPU();     
+            checkGPUPanel();     
     #endif
     }
         

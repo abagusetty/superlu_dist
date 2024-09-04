@@ -51,7 +51,6 @@ public:
       check_id(it->second);
       return it->second;
     }
-    printf("WARNING: no SYCL device found in the map, returning DEFAULT_DEVICE_ID\n");
     return DEFAULT_DEVICE_ID;
   }
   sycl::queue* current_queue() {

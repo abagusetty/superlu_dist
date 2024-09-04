@@ -1,9 +1,9 @@
 /*! \file
 Copyright (c) 2003, The Regents of the University of California, through
-Lawrence Berkeley National Laboratory (subject to receipt of any required 
-approvals from U.S. Dept. of Energy) 
+Lawrence Berkeley National Laboratory (subject to receipt of any required
+approvals from U.S. Dept. of Energy)
 
-All rights reserved. 
+All rights reserved.
 
 The source code is distributed under BSD license, see the file License.txt
 at the top-level directory.
@@ -88,8 +88,8 @@ void Destroy_Dense_Matrix_dist(SuperMatrix *A)
 /*! \brief
  *
  * <pre>
- * Count the total number of nonzeros in factors L and U,  and in the 
- * symmetrically reduced L. 
+ * Count the total number of nonzeros in factors L and U,  and in the
+ * symmetrically reduced L.
  * </pre>
  */
 void countnz_dist(const int_t n, int_t *xprune,
@@ -114,7 +114,7 @@ void countnz_dist(const int_t n, int_t *xprune,
     if (n <= 0)
         return;
 
-    /* 
+    /*
      * For each supernode in L.
      */
     for (i = 0; i <= nsuper; i++)
@@ -148,7 +148,7 @@ void countnz_dist(const int_t n, int_t *xprune,
     printf("\tNo of nonzeros in symm-reduced L = " IFMT ", nnzL " IFMT ", nnzU " IFMT "\n",
 	   nnzL0, *nnzL, *nnzU);
 #endif
-    
+
 }
 
 /*! \brief
@@ -182,7 +182,7 @@ fixupL_dist(const int_t n, const int_t *perm_r,
     nsuper = (Glu_persist->supno)[n];
     lsub_size = xlsub[n];
 
-    /* 
+    /*
      * For each supernode ...
      */
     for (i = 0; i <= nsuper; i++)
@@ -226,7 +226,7 @@ void set_default_options_dist(superlu_dist_options_t *options)
     options->num_lookaheads = 10;
     options->superlu_maxsup = 256;
     options->superlu_relax = 60;
-    strcpy(options->superlu_rankorder, "Z"); 
+    strcpy(options->superlu_rankorder, "Z");
     strcpy(options->superlu_lbs, "GD");
     options->superlu_acc_offload = 1;
     options->superlu_n_gemm = 5000;
@@ -249,7 +249,7 @@ void print_options_dist(superlu_dist_options_t *options)
 {
     if (options->PrintStat == NO)
         return;
-    
+
     printf("**************************************************\n");
     printf(".. options:\n");
     printf("**    Fact                      : %4d\n", options->Fact);
@@ -300,7 +300,7 @@ void print_sp_ienv_dist(superlu_dist_options_t *options)
 #ifdef GPU_ACC
     gpu_enabled = sp_ienv_dist(10, options);
 #endif
-    
+
     printf("**************************************************\n");
     printf(".. blocking parameters from sp_ienv():\n");
     printf("**    relaxation                 : %d\n", sp_ienv_dist(2, options));
@@ -535,7 +535,7 @@ void PStatPrint(superlu_dist_options_t *options, SuperLUStat_t *stat, gridinfo_t
         SUPERLU_FREE(ops1);
     }
 
-#endif // end if PROFlevel>=1 
+#endif // end if PROFlevel>=1
 
     /*  if ( !iam ) fflush(stdout);  CRASH THE SYSTEM pierre.  */
 }
@@ -597,7 +597,7 @@ void get_diag_procs(int_t n, Glu_persist_t *Glu_persist, gridinfo_t *grid,
     }
 }
 
-/*! \brief Get the statistics of the supernodes 
+/*! \brief Get the statistics of the supernodes
  */
 #define NBUCKS 10
 static int max_sup_size;
@@ -947,7 +947,7 @@ void arrive_at_ublock(int j,      /* j-th block in a U panel */
     *iukp = iukp0; /* point to the first block in index[] */
     *rukp = rukp0; /* point to the start of nzval[] */
 
-    /* Sherry -- why always starts from 0 ?? Can continue at 
+    /* Sherry -- why always starts from 0 ?? Can continue at
        the column left from last search.  */
     /* Caveat: There is a permutation perm_u involved for j. That's why
        the search need to restart from 0.  */
@@ -957,7 +957,7 @@ void arrive_at_ublock(int j,      /* j-th block in a U panel */
     for (jj = 0; jj < perm_u[2 * j + 1]; jj++) /* == j */
 #endif
     {
-        /* Reinitilize the pointers to the beginning of the 
+        /* Reinitilize the pointers to the beginning of the
 	 * k-th column/row of L/U factors.
 	 * usub[] - index array for panel U(k,:)
 	 */
@@ -1078,7 +1078,7 @@ int_t estimate_bigu_size(
       int_t nsupers,
       int_t **Ufstnz_br_ptr, /* point to U index[] array */
       Glu_persist_t *Glu_persist,
-      gridinfo_t* grid, int_t* perm_u, 
+      gridinfo_t* grid, int_t* perm_u,
       int_t *max_ncols /* Output: Max. number of columns among all U(k,:).
 			  This is used for allocating GEMM V buffer.  */
 			 )
@@ -1105,9 +1105,9 @@ int_t estimate_bigu_size(
         my_max_ldu = SUPERLU_MAX(ldu, my_max_ldu);
     }
 #if 0
-	my_max_ldu = my_max_ldu*8;  //YL: 8 is a heuristic number  
+	my_max_ldu = my_max_ldu*8;  //YL: 8 is a heuristic number
 #endif
-	
+
     /* Need U buffer size large enough to hold all U(k,:) transferred from
        other processes. */
     MPI_Allreduce(&my_max_ldu, &max_ldu, 1, mpi_int_t, MPI_MAX, grid->cscp.comm);
@@ -1388,9 +1388,9 @@ gemm_division_cpu_gpu(
 
 
     /* Early return, when number of columns is smaller than threshold,
-       or superlu_acc_offload == 0, then everything should be done on CPU. 
+       or superlu_acc_offload == 0, then everything should be done on CPU.
        Test condition GPU Flops ~ nbrow*ldu*cols < Ngem */
-    if ( 
+    if (
         (ldu < GPUMM_MIN_K)       // inner dimension is sufficient to hide latency
      || (nbrow*ncols < GPUMM_MIN_MN) // product of MN is sufficient
      || (ncols*nbrow*ldu < Ngem )
@@ -1411,7 +1411,7 @@ gemm_division_cpu_gpu(
 
     *num_streams_used = 0;
     *ncpu_blks = 0;
-    
+
     /* Find first block where count > Ngem */
     int i;
     for (i = 0; i < num_blks - 1; ++i)  /*I can use binary search here */
@@ -1457,7 +1457,7 @@ gemm_division_cpu_gpu(
         } // end for i ... streams
 
     }
-	
+
 } /* gemm_division_cpu_gpu */
 
 /* The following are moved from superlu_gpu.cu */
@@ -1467,7 +1467,7 @@ int getnGPUStreams()
     // Disabling multiple gpu streams -- bug with multiple streams in 3D code?
     #if 0
 	return 1;
-    #else 
+    #else
 	char *ttemp;
 	ttemp = getenv ("SUPERLU_NUM_GPU_STREAMS");
 
@@ -1475,7 +1475,7 @@ int getnGPUStreams()
 		return atoi (ttemp);
 	else
 		return 1;
-    #endif 
+    #endif
 }
 
 int get_mpi_process_per_gpu ()
@@ -1500,7 +1500,7 @@ get_gpublas_nb ()
     if (ttemp)
         return atoi(ttemp);
     else
-        return 512;     // 64 
+        return 512;     // 64
 }
 
 int_t
@@ -1510,10 +1510,55 @@ get_num_gpu_streams ()
     ttemp = getenv ("SUPERLU_NUM_GPU_STREAMS");
     if (ttemp)
         return atoi(ttemp);
-    else if (getenv ("NUM_GPU_STREAMS")) 
-        return atoi(getenv ("NUM_GPU_STREAMS"));   
+    else if (getenv ("NUM_GPU_STREAMS"))
+        return atoi(getenv ("NUM_GPU_STREAMS"));
     else
         return 8;
 }
+
+int
+get_acc_offload (superlu_dist_options_t *options)
+{
+#ifdef GPU_ACC
+    return sp_ienv_dist(10, options);
+#else
+    return 0;
+#endif
+}
+
+int
+get_acc_solve ()
+{
+    superlu_dist_options_t *options = NULL; // not accessed
+#ifdef GPU_ACC
+    return sp_ienv_dist(11, options);
+#else
+    return 0;
+#endif
+}
+
+void bindGpuMpi(MPI_Comm Bcomm) {
+#ifdef GPU_ACC
+  /* Binding each MPI to a GPU device */
+  char *ttemp;
+  ttemp = getenv ("SUPERLU_BIND_MPI_GPU");
+
+  if (ttemp) {
+    int devs, rank;
+    MPI_Comm_rank(Bcomm, &rank); // MPI_COMM_WORLD??
+    gpuGetDeviceCount(&devs);  // Returns the number of compute-capable devices
+    int device_id = (int)(rank/get_mpi_process_per_gpu ()) % (devs); //YL: allow multiple MPIs per GPU
+    gpuSetDevice(device_id); // Set device to be used for GPU executions
+
+    int get_cur_dev;
+    gpuGetDevice(&get_cur_dev);
+    printf("** MPI rank %d, gpu=%d **\n",rank,get_cur_dev);
+    fflush(stdout);
+  }
+#else //CPU-case
+  return;
+#endif
+}
+
 
 #endif  /* defined GPU_ACC */

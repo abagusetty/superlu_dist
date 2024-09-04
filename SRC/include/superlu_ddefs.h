@@ -448,15 +448,6 @@ typedef struct
 #endif  // Above are moved to superlu_defs.h
 
 
-int_t scuStatUpdate(
-    int_t knsupc,
-    HyP_t* HyP,
-    SCT_t* SCT,
-    SuperLUStat_t *stat
-    );
-
-
-
 typedef struct
 {
     double *bigU;
@@ -494,6 +485,12 @@ typedef struct dlsumBmod_buff_t
 extern "C" {
 #endif
 
+int_t scuStatUpdate(
+    int_t knsupc,
+    HyP_t* HyP,
+    SCT_t* SCT,
+    SuperLUStat_t *stat
+    );
 
 /* Supernodal LU factor related */
 extern void
@@ -686,7 +683,7 @@ extern void dlsum_bmod_inv_gpu_wrap(superlu_dist_options_t *, int, int, int, int
                                     int*, int*, int*, int*, int*, int*,
                                     int*, int*, int*, int); //int*); //int*, double*);
 
-#endif
+#endif // GPU_ACC
 
 extern void pdgsrfs(superlu_dist_options_t *, int_t,
                     SuperMatrix *, double, dLUstruct_t *,

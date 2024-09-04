@@ -79,7 +79,7 @@ __device__ int dnextpow2(int v)
 
 typedef int pfx_dtype ;
 #ifdef HAVE_SYCL
-SYCL_EXTERNAL __device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n, sycl::nd_item<3>& item)
+void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n, sycl::nd_item<3>& item)
 #else
 __device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n)
 #endif
@@ -128,9 +128,9 @@ __device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n)
     }
     __syncthreads();
     if(2*thread_id  < n_original)
-    inOutArr[2*thread_id] = temp[2*thread_id]+ inOutArr[2*thread_id]; // write results to device memory
+      inOutArr[2*thread_id] = temp[2*thread_id]+ inOutArr[2*thread_id]; // write results to device memory
     if(2*thread_id+1  < n_original)
-    inOutArr[2*thread_id+1] = temp[2*thread_id+1]+ inOutArr[2*thread_id+1];
+      inOutArr[2*thread_id+1] = temp[2*thread_id+1]+ inOutArr[2*thread_id+1];
     __syncthreads();
     
 } /* end incScan */ 

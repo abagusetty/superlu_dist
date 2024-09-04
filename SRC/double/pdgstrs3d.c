@@ -3940,8 +3940,8 @@ int_t dfreeLsumBmod_buff(dlsumBmod_buff_t* lbmod_buf)
 
 
 int dpackUblock(int ldu, int_t* indCols,
-                 int_t knsupc, int_t iklrow,  int_t* usub,
-                 double* tempu, double* uval )
+                int_t knsupc, int_t iklrow,  int_t* usub,
+                double* tempu, double* uval )
 {
     double zero = 0.0;
     int ncols = 0;

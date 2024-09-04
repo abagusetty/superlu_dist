@@ -5,8 +5,11 @@
 #include "mapsampler_api.h"
 #endif
 
-#ifdef HAVE_CUDA
+#ifdef GPU_ACC
 #include "dlustruct_gpu.h"
+#include "anc25d-GPU_impl.hpp"
+#include "lupanelsComm3dGPU_impl.hpp"
+#include "dsparseTreeFactorGPU_impl.hpp"  //needed???
 // #include "acc_aux.c"
 #endif
 
@@ -14,17 +17,14 @@
 #include "lupanels.hpp"
 #include "superlu_upacked.h"
 #include "luAuxStructTemplated.hpp"
-#include "anc25d-GPU_impl.hpp"
 #include "dAncestorFactor_impl.hpp"
 #include "anc25d_impl.hpp"
-#include "dsparseTreeFactorGPU_impl.hpp"  //needed???
 #include "dsparseTreeFactor_upacked_impl.hpp"
-#include "schurCompUpdate_impl.cuh"
+#include "schurCompUpdate_impl.hpp"
 #include "l_panels_impl.hpp"
 #include "u_panels_impl.hpp"
 #include "lupanels_impl.hpp"
 #include "lupanels_GPU_impl.hpp"
-#include "lupanelsComm3dGPU_impl.hpp"
 #include "lupanels_comm3d_impl.hpp"
 // #include "sparseTreeFactor_impl.hpp"
 // pxgstrf3d<double>
@@ -132,7 +132,7 @@ int_t pdgstrf3d_upacked(superlu_dist_options_t *options, int m, int n, AnormType
                 double tilvl = SuperLU_timer_();
 
                 if (superlu_acc_offload)
-                #ifdef HAVE_CUDA
+                #ifdef GPU_ACC
                     LU_packed.dsparseTreeFactorGPU(sforest, dFBufs,
                                                    &gEtreeInfo,
                                                    tag_ub);
@@ -151,7 +151,7 @@ int_t pdgstrf3d_upacked(superlu_dist_options_t *options, int m, int n, AnormType
             {
                 if (superlu_acc_offload)
                 {
-#ifdef HAVE_CUDA
+#ifdef GPU_ACC
 		  //#define NDEBUG
 #ifndef NDEBUG
                     LU_packed.checkGPU();
@@ -181,8 +181,8 @@ int_t pdgstrf3d_upacked(superlu_dist_options_t *options, int m, int n, AnormType
         double tXferGpu2Host = SuperLU_timer_();
         if (superlu_acc_offload)
         {
-        #ifdef HAVE_CUDA
-            cudaStreamSynchronize(LU_packed.A_gpu.cuStreams[0]);    // in theory I don't need it
+        #ifdef GPU_ACC
+            gpuStreamSynchronize(LU_packed.A_gpu.cuStreams[0]);    // in theory I don't need it
             LU_packed.copyLUGPUtoHost();
         #endif
         }

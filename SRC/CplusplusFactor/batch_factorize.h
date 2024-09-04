@@ -65,8 +65,10 @@ struct BatchFactorizeWorkspace {
 #ifdef HAVE_MAGMA    
     magma_queue_t magma_queue;
 #endif
-    cudaStream_t stream;
-    cublasHandle_t cuhandle;
+    gpuStream_t stream;
+    #ifndef HAVE_SYCL
+    gpublasHandle_t cuhandle;
+    #endif
     
     // Marshall data 
     BatchLUMarshallData marshall_data;

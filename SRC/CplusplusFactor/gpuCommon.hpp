@@ -11,7 +11,7 @@
 #ifdef HAVE_CUDA
 cudaError_t checkCudaLocal(cudaError_t result);
 
-#define gpuErrchk(ans)                                                                                                 \
+#define checkGPU(ans)                                                                                                 \
 {                                                                                                                  \
     gpuAssert((ans), __FILE__, __LINE__);                                                                          \
 }

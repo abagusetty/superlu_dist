@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 #include <mpi.h>
 #include "superlu_defs.h"
 #include "superlu_zdefs.h"
@@ -8,7 +8,7 @@ struct diagFactBufs_t {
     Ftype* BlockUFactor;
     // Add other members as needed
 };
-struct complex; 
+struct complex;
 template <typename T>
 MPI_Datatype get_mpi_type()
 {
@@ -45,7 +45,7 @@ MPI_Datatype get_mpi_type<doublecomplex>()
     return MPI_C_DOUBLE_COMPLEX;
 }
 
-// AnormType<double> 
+// AnormType<double>
 
 template <typename Ftype>
 using AnormType = typename std::conditional<
@@ -55,7 +55,7 @@ using AnormType = typename std::conditional<
         std::is_same<Ftype, double>::value || std::is_same<Ftype, doublecomplex>::value,
         double,
         float  // Default to float
-    >::type 
+    >::type
 >::type;
 
 template <typename Ftype>
@@ -66,11 +66,11 @@ using threshPivValType = typename std::conditional<
         std::is_same<Ftype, double>::value || std::is_same<Ftype, doublecomplex>::value,
         double,
         float  // Default to float
-    >::type 
+    >::type
 >::type;
 
 // template <typename Ftype>
-// using trf3dpartitionType 
+// using trf3dpartitionType
 template <typename Ftype>
 using trf3dpartitionType = typename std::conditional<
     std::is_same<Ftype, double>::value,
@@ -111,7 +111,7 @@ using LocalLU_type = typename std::conditional<
         typename std::conditional<
             std::is_same<Ftype, doublecomplex>::value,
             zLocalLU_t,
-            void 
+            void
         >::type
     >::type
 >::type;
@@ -126,7 +126,7 @@ using LUValSubBuf_type = typename std::conditional<
         typename std::conditional<
             std::is_same<Ftype, doublecomplex>::value,
             zLUValSubBuf_t,
-            void 
+            void
         >::type
     >::type
 >::type;
@@ -141,7 +141,7 @@ using diagFactBufs_type = typename std::conditional<
         typename std::conditional<
             std::is_same<Ftype, doublecomplex>::value,
             zdiagFactBufs_t,
-            void 
+            void
         >::type
     >::type
 >::type;
@@ -200,22 +200,34 @@ T atomicAddT(T* address, T val);
 // Specialization for double
 template<>
 double atomicAddT<double>(double* address, double val) {
+    #ifdef HAVE_SYCL
+    return sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>(*address).fetch_add( val );
+    #else
     return atomicAdd(address, val);
+    #endif
 }
 
 // Specialization for float
 template<>
 float atomicAddT<float>(float* address, float val) {
+    #ifdef HAVE_SYCL
+    return sycl::atomic_ref<float, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>(*address).fetch_add( val );
+    #else
     return atomicAdd(address, val);
+    #endif
 }
 
 // Specialization for std::complex<double>
 template<>
 doublecomplex atomicAddT<doublecomplex>(doublecomplex* address, doublecomplex val) {
     // doublecomplex out = *address;
-    
+    #ifdef HAVE_SYCL
+    sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>(address->r).fetch_add( val.r );
+    sycl::atomic_ref<double, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>(address->i).fetch_add( val.i );
+    #else
     atomicAdd (&address->r, val.r);
     atomicAdd (&address->i, val.i);
+    #endif
     return *address;
 }
 
@@ -298,7 +310,7 @@ void setDiagToThreshold(double* diagptr, double thresh) {
     if (*diagptr < 0)
         *diagptr = -thresh;
     else
-        *diagptr = thresh; 
+        *diagptr = thresh;
 }
 
 // template <>
@@ -306,7 +318,7 @@ void setDiagToThreshold(float* diagptr, float thresh) {
     if (*diagptr < 0)
         *diagptr = -thresh;
     else
-        *diagptr = thresh; 
+        *diagptr = thresh;
     // *diagptr = thresh;
 }
 
@@ -316,8 +328,7 @@ void setDiagToThreshold(doublecomplex* diagptr, double thresh) {
     if (diagptr->r < 0)
         *diagptr = -z;
     else
-        *diagptr = z; 
-    
+        *diagptr = z;
+
     *diagptr = z;
 }
-

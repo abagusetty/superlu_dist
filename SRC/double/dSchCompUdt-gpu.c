@@ -191,15 +191,16 @@ if ( msg0 && msg2 ) {  /* L(:,k) and U(k,:) are not empty. */
 		assert(nbrow*ldu<=ldt*max_row_size);
 #endif
 
-		streams[0]->ext_oneapi_memcpy2d(dA, nbrow*sizeof(double),
-				  &lusup[luptr+(knsupc-ldu)*nsupr],
-				  nsupr*sizeof(double), nbrow*sizeof(double),
-                                                ldu).wait();
-                
-		/* gpuMemcpy2DAsync(dA, nbrow*sizeof(double), */
+		/* checkGPUErrors( gpuMemcpy2DAsync(dA, nbrow*sizeof(double), */
 		/* 		  &lusup[luptr+(knsupc-ldu)*nsupr], */
 		/* 		  nsupr*sizeof(double), nbrow*sizeof(double), */
-		/* 		  ldu, gpuMemcpyHostToDevice, streams[0]); */
+                /*                   ldu, gpuMemcpyHostToDevice, streams[0]) ); */
+
+		streams[0]->ext_oneapi_memcpy2d(dA, nbrow*sizeof(double),
+                                 &lusup[luptr+(knsupc-ldu)*nsupr],
+                                 nsupr*sizeof(double), nbrow*sizeof(double),
+                                 ldu);
+                
 	    }
 
 	    for (int i = 0; i < num_streams_used; ++i) { // streams on GPU
@@ -224,30 +225,27 @@ if ( msg0 && msg2 ) {  /* L(:,k) and U(k,:) are not empty. */
 		    // Sherry: Check dC buffer of *buffer_size* is large enough
 		    assert(nbrow*(st_col+num_col_stream) < buffer_size);
 
-		    streams[stream_id]->memcpy(dB+b_offset, tempu+b_offset, B_stream_size).wait();
-
-                    
-		    /* gpuMemcpyAsync(dB+b_offset, tempu+b_offset, B_stream_size, */
-		    /*     	    gpuMemcpyHostToDevice, streams[stream_id]); */
+                    /* checkGPUErrors( gpuMemcpyAsync(dB+b_offset, tempu+b_offset, B_stream_size, */
+                    /*                                gpuMemcpyHostToDevice, streams[stream_id]) ); */
+                    streams[stream_id]->memcpy(dB+b_offset, tempu+b_offset, B_stream_size);                    
 
                     #ifdef HAVE_SYCL
-                    /* dgemm_("N", "N", &nbrow, &num_col_stream, &ldu, &alpha, */
-                    /*        &lusup[luptr+(knsupc-ldu)*nsupr], &nsupr, */
-                    /*        tempu+ldu*st_col, &ldu, &beta, tempv1, &nbrow); */
+                    /* oneapi::mkl::blas::column_major::gemm(*streams[stream_id], */
+                    /*                         GPUBLAS_OP_N, GPUBLAS_OP_N, */
+                    /*                         nbrow, num_col_stream, ldu, */
+                    /*                         alpha, dA, nbrow, */
+                    /*                         &dB[b_offset], ldu, */
+                    /*                         alpha, &dC[c_offset], */
+                    /*                         nbrow); */
 
+                    oneapi::mkl::blas::column_major::gemm(*streams[stream_id],
+                                                          GPUBLAS_OP_N, GPUBLAS_OP_N,
+                                                          std::int64_t(nbrow), std::int64_t(num_col_stream), std::int64_t(ldu),
+                                                          alpha, dA, std::int64_t(nbrow),
+                                                          &dB[b_offset], std::int64_t(ldu),
+                                                          alpha, &dC[c_offset],
+                                                          std::int64_t(nbrow));
                     
-                    /* /\* double *temp_dB = dB + b_offset; *\/ */
-                    /* /\* double *temp_dC = dC + c_offset; *\/ */
-                    /* /\* printf("Values from the print: %d, %d, %d, %d, %d, %f, %d, %f, %d, %d\n", stream_id, nbrow, num_col_stream, ldu, st_col, alpha, nbrow, beta, b_offset, c_offset); *\/ */
-                    
-                    auto event = oneapi::mkl::blas::column_major::gemm(*streams[stream_id],
-                                            GPUBLAS_OP_N, GPUBLAS_OP_N,
-                                            nbrow, num_col_stream, ldu,
-                                            alpha, dA, nbrow,
-                                            &dB[b_offset], ldu,
-                                            alpha, &dC[c_offset],
-                                            nbrow);
-                    event.wait();
                     #else
 		    gpublasCheckErrors(
 				  gpublasSetStream(handle[stream_id],
@@ -265,12 +263,14 @@ if ( msg0 && msg2 ) {  /* L(:,k) and U(k,:) are not empty. */
 				  );
                     #endif // HAVE_SYCL
 
-                    streams[stream_id]->memcpy(tempv1, dC+c_offset, C_stream_size).wait();
-		    /* checkGPU( gpuMemcpyAsync(tempv1, dC+c_offset, */
-		    /*     		   C_stream_size, */
-		    /*     		   gpuMemcpyDeviceToHost, */
-		    /*     		   streams[stream_id]) ); */
-#else /*-- on CPU --*/
+                    /* checkGPUErrors( gpuMemcpyAsync(tempv1, dC+c_offset, */
+                    /*                        C_stream_size, */
+                    /*                        gpuMemcpyDeviceToHost, */
+                    /*                        streams[stream_id]) ); */
+
+                    streams[stream_id]->memcpy(tempv1, dC+c_offset, C_stream_size);
+
+#else -- on CPU --
 		} else { num_col_stream == 0  Sherry: how can get here?
                     /* Sherry: looks like a batched GEMM */
 	            my_dgemm_("N", "N", &nbrow, &num_col_stream, &ldu,
@@ -528,8 +528,7 @@ if ( msg0 && msg2 ) {  /* L(:,k) and U(k,:) are not empty. */
                 int* indirect2_thread = indirect2 + ldt*thread_id;
                 double* tempv1;
                 for(i = 0; i < num_streams_used; i++) { /* i is private variable */
-                    streams[i]->wait_and_throw();
-                    /* checkGPU(gpuStreamSynchronize (streams[i])); */
+                    checkGPU(gpuStreamSynchronize (streams[i]));
 		    // jjj_st1 := first block column on GPU stream[i]
 		    int jjj_st1 = (i==0) ? jjj_st + ncpu_blks : jjj_st + stream_end_col[i-1];
                     int jjj_end = jjj_st + stream_end_col[i];
@@ -629,6 +628,3 @@ if ( msg0 && msg2 ) {  /* L(:,k) and U(k,:) are not empty. */
     } /* if nbrow>0 */
 
  }   /* if msg1 and msg 2 */
-
-
-

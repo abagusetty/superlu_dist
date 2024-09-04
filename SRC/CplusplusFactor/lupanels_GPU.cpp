@@ -4,16 +4,11 @@
 #include "superlu_defs.h"
 #include "superlu_dist_config.h"
 
-#ifdef HAVE_CUDA
-
-#include <cuda_runtime.h>
-
-#include "cublas_v2.h"
-
+#ifdef GPU_ACC
 
 #include "lupanels.hpp"
 
-//TODO: make expsilon a enviroment variable 
+//TODO: make expsilon a enviroment variable
 // #define EPSILON 1e-3
 #define EPSILON 1e-6
 
@@ -27,11 +22,11 @@
 
 //     return 0;
 // }
-#else 
+#else
 int checkArr(double *A, double *B, int n)
 {
     double nrmA = 0;
-    for (int i = 0; i < n; i++) 
+    for (int i = 0; i < n; i++)
         nrmA += A[i]*A[i];
     nrmA = sqrt(nrmA);
     for (int i = 0; i < n; i++)
@@ -41,7 +36,7 @@ int checkArr(double *A, double *B, int n)
 
     return 0;
 }
-#endif 
+#endif
 lpanelGPU_t lpanel_t::copyToGPU()
 {
 
@@ -51,12 +46,12 @@ lpanelGPU_t lpanel_t::copyToGPU()
     size_t valSize = sizeof(double) * nzvalSize();
 
 
-    gpuErrchk(cudaMalloc(&gpuPanel.index, idxSize));
-    gpuErrchk(cudaMalloc(&gpuPanel.val, valSize));
+    checkGPU(gpuMalloc((void**)&gpuPanel.index, idxSize));
+    checkGPU(gpuMalloc((void**)&gpuPanel.val, valSize));
 
-    
-    gpuErrchk(cudaMemcpy(gpuPanel.index, index, idxSize, cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(gpuPanel.val, val, valSize, cudaMemcpyHostToDevice));
+
+    checkGPU(gpuMemcpy(gpuPanel.index, index, idxSize, gpuMemcpyHostToDevice));
+    checkGPU(gpuMemcpy(gpuPanel.val, val, valSize, gpuMemcpyHostToDevice));
 
     return gpuPanel;
 }
@@ -70,14 +65,14 @@ lpanelGPU_t lpanel_t::copyToGPU(void* basePtr)
     size_t valSize = sizeof(double) * nzvalSize();
 
     gpuPanel.index = (int_t*) basePtr;
-    // cudaMalloc(&gpuPanel.index, idxSize);
-    gpuErrchk(cudaMemcpy(gpuPanel.index, index, idxSize, cudaMemcpyHostToDevice));
+    // gpuMalloc(&gpuPanel.index, idxSize);
+    checkGPU(gpuMemcpy(gpuPanel.index, index, idxSize, gpuMemcpyHostToDevice));
 
-    basePtr = (char *)basePtr+ idxSize; 
-    gpuPanel.val = (double *) basePtr; 
-    // cudaMalloc(&gpuPanel.val, valSize);
-    
-    gpuErrchk(cudaMemcpy(gpuPanel.val, val, valSize, cudaMemcpyHostToDevice));
+    basePtr = (char *)basePtr+ idxSize;
+    gpuPanel.val = (double *) basePtr;
+    // gpuMalloc(&gpuPanel.val, valSize);
+
+    checkGPU(gpuMemcpy(gpuPanel.val, val, valSize, gpuMemcpyHostToDevice));
 
     return gpuPanel;
 }
@@ -87,7 +82,7 @@ int_t lpanel_t::copyFromGPU()
     if(isEmpty())
         return 0;
     size_t valSize = sizeof(double) * nzvalSize();
-    gpuErrchk(cudaMemcpy(val, gpuPanel.val,  valSize, cudaMemcpyDeviceToHost));
+    checkGPU(gpuMemcpy(val, gpuPanel.val,  valSize, gpuMemcpyDeviceToHost));
 }
 
 int_t upanel_t::copyFromGPU()
@@ -95,7 +90,7 @@ int_t upanel_t::copyFromGPU()
     if(isEmpty())
         return 0;
     size_t valSize = sizeof(double) * nzvalSize();
-    gpuErrchk(cudaMemcpy(val, gpuPanel.val,  valSize, cudaMemcpyDeviceToHost));
+    checkGPU(gpuMemcpy(val, gpuPanel.val,  valSize, gpuMemcpyDeviceToHost));
 }
 
 int upanel_t::copyBackToGPU()
@@ -103,7 +98,7 @@ int upanel_t::copyBackToGPU()
     if(isEmpty())
         return 0;
     size_t valSize = sizeof(double) * nzvalSize();
-    gpuErrchk(cudaMemcpy(gpuPanel.val, val,  valSize, cudaMemcpyHostToDevice));
+    checkGPU(gpuMemcpy(gpuPanel.val, val,  valSize, gpuMemcpyHostToDevice));
 }
 
 int lpanel_t::copyBackToGPU()
@@ -111,7 +106,7 @@ int lpanel_t::copyBackToGPU()
     if(isEmpty())
         return 0;
     size_t valSize = sizeof(double) * nzvalSize();
-    gpuErrchk(cudaMemcpy(gpuPanel.val, val,  valSize, cudaMemcpyHostToDevice));
+    checkGPU(gpuMemcpy(gpuPanel.val, val,  valSize, gpuMemcpyHostToDevice));
 }
 
 upanelGPU_t upanel_t::copyToGPU()
@@ -122,12 +117,12 @@ upanelGPU_t upanel_t::copyToGPU()
     size_t idxSize = sizeof(int_t) * indexSize();
     size_t valSize = sizeof(double) * nzvalSize();
 
-    gpuErrchk(cudaMalloc(&gpuPanel.index, idxSize));
-    gpuErrchk(cudaMalloc(&gpuPanel.val, valSize));
+    checkGPU(gpuMalloc((void**)&gpuPanel.index, idxSize));
+    checkGPU(gpuMalloc((void**)&gpuPanel.val, valSize));
 
-    
-    gpuErrchk(cudaMemcpy(gpuPanel.index, index, idxSize, cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(gpuPanel.val, val, valSize, cudaMemcpyHostToDevice));
+
+    checkGPU(gpuMemcpy(gpuPanel.index, index, idxSize, gpuMemcpyHostToDevice));
+    checkGPU(gpuMemcpy(gpuPanel.val, val, valSize, gpuMemcpyHostToDevice));
     return gpuPanel;
 }
 
@@ -140,22 +135,21 @@ upanelGPU_t upanel_t::copyToGPU(void* basePtr)
     size_t valSize = sizeof(double) * nzvalSize();
 
     gpuPanel.index = (int_t*) basePtr;
-    // cudaMalloc(&gpuPanel.index, idxSize);
-    gpuErrchk(cudaMemcpy(gpuPanel.index, index, idxSize, cudaMemcpyHostToDevice));
+    // gpuMalloc(&gpuPanel.index, idxSize);
+    checkGPU(gpuMemcpy(gpuPanel.index, index, idxSize, gpuMemcpyHostToDevice));
 
-    basePtr = (char *)basePtr+ idxSize; 
-    gpuPanel.val = (double *) basePtr; 
-    // cudaMalloc(&gpuPanel.val, valSize);
-    
-    gpuErrchk(cudaMemcpy(gpuPanel.val, val, valSize, cudaMemcpyHostToDevice));
+    basePtr = (char *)basePtr+ idxSize;
+    gpuPanel.val = (double *) basePtr;
+    // gpuMalloc(&gpuPanel.val, valSize);
+
+    checkGPU(gpuMemcpy(gpuPanel.val, val, valSize, gpuMemcpyHostToDevice));
 
     return gpuPanel;
 }
 
 
-int lpanel_t::checkGPU()
+int lpanel_t::checkGPUPanel()
 {
-
     assert(isEmpty() == gpuPanel.isEmpty());
 
     if (isEmpty())
@@ -163,15 +157,15 @@ int lpanel_t::checkGPU()
 
     size_t valSize = sizeof(double) * nzvalSize();
 
-   std::vector<double> tmpArr(nzvalSize());
-    gpuErrchk(cudaMemcpy(tmpArr.data(), gpuPanel.val, valSize, cudaMemcpyDeviceToHost));
+    std::vector<double> tmpArr(nzvalSize());
+    checkGPU(gpuMemcpy(tmpArr.data(), gpuPanel.val, valSize, gpuMemcpyDeviceToHost));
 
     int out = checkArr(tmpArr.data(), val, nzvalSize());
 
     return 0;
 }
 
-int_t lpanel_t::panelSolveGPU(cublasHandle_t handle, cudaStream_t cuStream,
+int_t lpanel_t::panelSolveGPU(gpublasHandle_t handle, gpuStream_t cuStream,
                               int_t ksupsz,
                               double *DiagBlk, // device pointer
                               int_t LDD)
@@ -189,13 +183,20 @@ int_t lpanel_t::panelSolveGPU(cublasHandle_t handle, cudaStream_t cuStream,
 
     double alpha = 1.0;
 
-    cublasSetStream(handle, cuStream);
-    cublasStatus_t cbstatus =
-        cublasDtrsm(handle,
-                    CUBLAS_SIDE_RIGHT, CUBLAS_FILL_MODE_UPPER,
-                    CUBLAS_OP_N, CUBLAS_DIAG_NON_UNIT,
-                    len, ksupsz, &alpha, DiagBlk, LDD,
+    #ifdef HAVE_SYCL
+    oneapi::mkl::blas::column_major::trsm(*cuStream,
+                    GPUBLAS_SIDE_RIGHT, GPUBLAS_FILL_MODE_UPPER,
+                    GPUBLAS_OP_N, GPUBLAS_DIAG_NON_UNIT,
+                    len, ksupsz, alpha, DiagBlk, LDD,
                     lPanelStPtr, LDA());
+    #else
+    gpublasCheckErrors( gpublasSetStream(handle, cuStream) );
+    gpublasCheckErrors( gpublasDtrsm(handle,
+                    GPUBLAS_SIDE_RIGHT, GPUBLAS_FILL_MODE_UPPER,
+                    GPUBLAS_OP_N, GPUBLAS_DIAG_NON_UNIT,
+                    len, ksupsz, &alpha, DiagBlk, LDD,
+                    lPanelStPtr, LDA()) );
+    #endif
 
     return 0;
 }
@@ -214,69 +215,79 @@ int_t lpanel_t::diagFactorPackDiagBlockGPU(int_t k,
     size_t height = kSupSize;
     double *val = blkPtrGPU(0);
 
-    gpuErrchk(cudaMemcpy2D(DiagLBlk, dpitch, val, spitch,
-                 width, height, cudaMemcpyDeviceToHost));
+    checkGPU(gpuMemcpy2D(DiagLBlk, dpitch, val, spitch,
+                 width, height, gpuMemcpyDeviceToHost));
 
     // call dgetrf2
     dgstrf2(k, DiagLBlk, LDD, UBlk, LDU,
             thresh, xsup, options, stat, info);
 
     //copy back to device
-    gpuErrchk(cudaMemcpy2D(val, spitch, DiagLBlk, dpitch,
-                 width, height, cudaMemcpyHostToDevice));
+    checkGPU(gpuMemcpy2D(val, spitch, DiagLBlk, dpitch,
+                 width, height, gpuMemcpyHostToDevice));
 
     return 0;
 }
 
-int_t lpanel_t::diagFactorCuSolver(int_t k,
-                                     cusolverDnHandle_t cusolverH, cudaStream_t cuStream,
-                                    double *dWork, int* dInfo,  // GPU pointers 
+int_t lpanel_t::diagFactorGpuSolver(int_t k,
+                                    gpusolverDnHandle_t gpusolverH, gpuStream_t cuStream,
+                                    double *dWork, int* dInfo,  // GPU pointers
                                     double *dDiagBuf, int_t LDD, // GPU pointers
                                     double thresh, int_t *xsup,
                                     superlu_dist_options_t *options,
                                     SuperLUStat_t *stat, int *info)
 {
-    // cusolverDnHandle_t cusolverH = NULL;
-    cudaStream_t stream = NULL;
+    // gpusolverDnHandle_t gpusolverH = NULL;
+    gpuStream_t stream = NULL;
     int kSupSize = SuperSize(k);
     size_t dpitch = LDD * sizeof(double);
     size_t spitch = LDA() * sizeof(double);
     size_t width = kSupSize * sizeof(double);
     size_t height = kSupSize;
     double *val = blkPtrGPU(0);
-    // cusolverDnDgetrf_bufferSize(cusolverH, m, m, d_A, lda, &lwork)
-    
-    // call the cusolver 
-    // cublasSetStream(handle, cuStream);
-    //  cusolverDnSetStream(cuStream);
-    gpuCusolverErrchk(cusolverDnSetStream(cusolverH, cuStream));
-    gpuCusolverErrchk(cusolverDnDgetrf(cusolverH, kSupSize, kSupSize, val, LDA(), dWork, NULL, dInfo));
+    // gpusolverDnDgetrf_bufferSize(gpusolverH, m, m, d_A, lda, &lwork)
+
+    // call the gpusolver
+    #ifndef HAVE_SYCL
+    gpusolverCheckErrors(gpusolverDnSetStream(gpusolverH, cuStream));
+    gpusolverCheckErrors(gpusolverDnDgetrf(gpusolverH, kSupSize, kSupSize, val, LDA(), dWork, NULL, dInfo));
+    #else
+    auto scratchpad_size = oneapi::mkl::lapack::getrf_scratchpad_size<double>(*cuStream, kSupSize, kSupSize, LDA());
+    oneapi::mkl::lapack::getrf(*cuStream, kSupSize, kSupSize, val, LDA(), nullptr, dWork, scratchpad_size);
+    #endif
 
     // Device to Device Copy
-    gpuErrchk(cudaMemcpy2DAsync(dDiagBuf, dpitch, val, spitch,
-                 width, height, cudaMemcpyDeviceToDevice, cuStream));
-    gpuErrchk(cudaStreamSynchronize(cuStream));
+    checkGPU(gpuMemcpy2DAsync(dDiagBuf, dpitch, val, spitch,
+                 width, height, gpuMemcpyDeviceToDevice, cuStream));
+    checkGPU(gpuStreamSynchronize(cuStream));
     return 0;
 }
 
-int_t upanel_t::panelSolveGPU(cublasHandle_t handle, cudaStream_t cuStream,
+int_t upanel_t::panelSolveGPU(gpublasHandle_t handle, gpuStream_t cuStream,
                               int_t ksupsz, double *DiagBlk, int_t LDD)
 {
     if (isEmpty())
         return 0;
 
     double alpha = 1.0;
-    
-    cublasSetStream(handle, cuStream);
-    cublasStatus_t cbstatus =
-        cublasDtrsm(handle,
-                    CUBLAS_SIDE_LEFT, CUBLAS_FILL_MODE_LOWER,
-                    CUBLAS_OP_N, CUBLAS_DIAG_UNIT,
-                    ksupsz, nzcols(), &alpha, DiagBlk, LDD,
-                    blkPtrGPU(0), LDA());
+
+    #ifdef HAVE_SYCL
+    gpublasCheckErrors(oneapi::mkl::blas::column_major::trsm(*cuStream,
+                                     GPUBLAS_SIDE_LEFT, GPUBLAS_FILL_MODE_LOWER,
+                                     GPUBLAS_OP_N, GPUBLAS_DIAG_UNIT,
+                                     ksupsz, nzcols(), alpha, DiagBlk, LDD,
+                                     blkPtrGPU(0), LDA()));
+    #else
+    gpublasCheckErrors( gpublasSetStream(handle, cuStream) );
+    gpublasCheckErrors( gpublasDtrsm(handle,
+                                     GPUBLAS_SIDE_LEFT, GPUBLAS_FILL_MODE_LOWER,
+                                     GPUBLAS_OP_N, GPUBLAS_DIAG_UNIT,
+                                     ksupsz, nzcols(), &alpha, DiagBlk, LDD,
+                                     blkPtrGPU(0), LDA()) );
+    #endif
 }
 
-int upanel_t::checkGPU()
+int upanel_t::checkGPUPanel()
 {
     assert(isEmpty() == gpuPanel.isEmpty());
 
@@ -287,7 +298,7 @@ int upanel_t::checkGPU()
 
     // double *tmpArr = new double[nzvalSize()];
     std::vector<double> tmpArr(nzvalSize());
-    gpuErrchk(cudaMemcpy(tmpArr.data(), gpuPanel.val, valSize, cudaMemcpyDeviceToHost));
+    checkGPU(gpuMemcpy(tmpArr.data(), gpuPanel.val, valSize, gpuMemcpyDeviceToHost));
 
     int out = checkArr(tmpArr.data(), val, nzvalSize());
     // delete tmpArr;
@@ -301,7 +312,7 @@ lpanelGPU_t::lpanelGPU_t(lpanel_t &lpanel) : lpanel_CPU(lpanel)
     size_t idxSize = sizeof(int_t) * lpanel.indexSize();
     size_t valSize = sizeof(double) * lpanel.nzvalSize();
 
-    
+
     cudaMalloc(&index, idxSize);
     cudaMemcpy(index, lpanel.index, idxSize, cudaMemcpyHostToDevice);
 
@@ -324,7 +335,7 @@ int lpanelGPU_t::check(lpanel_t &lpanel)
     return 0;
 }
 
-int_t lpanelGPU_t::panelSolve(cublasHandle_t handle, cudaStream_t cuStream,
+int_t lpanelGPU_t::panelSolve(gpublasHandle_t handle, gpuStream_t cuStream,
                               int_t ksupsz, double *DiagBlk, int_t LDD)
 {
 
@@ -340,10 +351,10 @@ int_t lpanelGPU_t::panelSolve(cublasHandle_t handle, cudaStream_t cuStream,
     }
 
     double alpha = 1.0;
-    
-    cublasStatus_t cbstatus = cublasDtrsm(handle,
-                                          CUBLAS_SIDE_RIGHT, CUBLAS_FILL_MODE_UPPER,
-                                          𝖢𝖴BLAS_OP_𝖭, CUBLAS_DIAG_NON_UNIT,
+
+    gpublasStatus_t cbstatus = gpublasDtrsm(handle,
+                                          GPUBLAS_SIDE_RIGHT, GPUBLAS_FILL_MODE_UPPER,
+                                          𝖢𝖴BLAS_OP_𝖭, GPUBLAS_DIAG_NON_UNIT,
                                           len, ksupsz, alpha, DiagBlk, LDD,
                                           lPanelStPtr, lpanel_CPU.LDA());
 
@@ -421,18 +432,18 @@ int upanelGPU_t::check(upanel_t &upanel)
 
 
 
-int_t upanelGPU_t::panelSolve(cublasHandle_t handle, cudaStream_t cuStream,
+int_t upanelGPU_t::panelSolve(gpublasHandle_t handle, gpuStream_t cuStream,
                               int_t ksupsz, double *DiagBlk, int_t LDD)
 {
     if (upanel_CPU.isEmpty())
         return 0;
 
     double alpha = 1.0;
-    
-    cublasStatus_t cbstatus =
-        cublasDtrsm(handle,
-                    𝖢𝖴BLAS_SIDE_LEFT, CUBLAS_FILL_MODE_LOWER,
-                    𝖢𝖴BLAS_OP_𝖭, CUBLAS_DIAG_UNIT,
+
+    gpublasStatus_t cbstatus =
+        gpublasDtrsm(handle,
+                    𝖢𝖴BLAS_SIDE_LEFT, GPUBLAS_FILL_MODE_LOWER,
+                    𝖢𝖴BLAS_OP_𝖭, GPUBLAS_DIAG_UNIT,
                     ksupsz, upanel_CPU.nzcols(), alpha, DiagBlk, LDD,
                     val, upanel_CPU.LDA());
 
@@ -440,5 +451,5 @@ int_t upanelGPU_t::panelSolve(cublasHandle_t handle, cudaStream_t cuStream,
     //               ksupsz, nzcols(), 1.0, DiagBlk, LDD, val, LDA());
     return 0;
 }
-#endif
-#endif
+#endif // if 0
+#endif // GPU_ACC

@@ -267,14 +267,18 @@ inline void generateOffsetPointers(T *base_mem, offT *offsets, T **ptrs, size_t 
 {
     UnaryOffsetPtrAssign<T, offT> offset_ptr_functor(base_mem, offsets, ptrs);
 
-    thrust::for_each(
-        thrust::system::cuda::par, thrust::counting_iterator<offT>(0),
-        thrust::counting_iterator<offT>(num_arrays), offset_ptr_functor
+    gputhrust::for_each(
+        gputhrust_policy, gputhrust::counting_iterator<offT>(0),
+        gputhrust::counting_iterator<offT>(num_arrays), offset_ptr_functor
     );
 }
 
+#ifdef HAVE_SYCL
+// Note: std::unary_functions/thrust::unary_functions are deprecated in
+// C++17 standards and above. So custom-functor was chosen as an alternative.
+// Need to adopt a similar solution for the CUDA & HIP backends as well. (in the future)
 template<typename T>
-struct element_diff : public thrust::unary_function<T,T>
+struct element_diff
 {
     T* st, *end;
     element_diff(T* st, T *end) 
@@ -288,5 +292,22 @@ struct element_diff : public thrust::unary_function<T,T>
         return end[x] - st[x];
     }
 };
+#else
+template<typename T>
+struct element_diff : public gputhrust::unary_function<T,T>
+{
+    T* st, *end;
+    element_diff(T* st, T *end) 
+    {
+        this->st = st;
+        this->end = end;
+    }
+    
+    __device__ T operator()(const T &x) const
+    {
+        return end[x] - st[x];
+    }
+};
+#endif // ifdef HAVE_SYCL
 
-#endif 
+#endif //#define __SUPERLU_BATCH_FACTORIZE_MARSHALL_H__

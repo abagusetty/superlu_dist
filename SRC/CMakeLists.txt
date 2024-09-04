@@ -7,28 +7,20 @@ set(SLU_HEADERS
     include/superlu_enum_consts.h
     include/supermatrix.h
     include/util_dist.h
-    include/gpu_api_utils.h
-    include/gpu_wrapper.h
-    include/sycl_device.hpp
     include/superlu_upacked.h
     include/superlu_dist_config.h
     include/superlu_FortranCInterface.h
     include/oneside.h
+    include/gpu_api_utils.h
+    include/gpu_wrapper.h
+    include/sycl_device.hpp    
     CplusplusFactor/lupanels.hpp
     CplusplusFactor/commWrapper.hpp
-    CplusplusFactor/lupanels_GPU.cuh
-    CplusplusFactor/batch_block_copy.h
-    CplusplusFactor/anc25d-GPU_impl.hpp
     CplusplusFactor/anc25d.hpp
     CplusplusFactor/anc25d_impl.hpp
-    CplusplusFactor/lupanelsComm3dGPU_impl.hpp
-    CplusplusFactor/lupanels_GPU_impl.hpp
     CplusplusFactor/lupanels_comm3d_impl.hpp
-    CplusplusFactor/cublas_cusolver_wrappers.hpp
     CplusplusFactor/lupanels_impl.hpp
     CplusplusFactor/dAncestorFactor_impl.hpp
-#    CplusplusFactor/pdgstrf3d_upacked_impl.hpp
-    CplusplusFactor/dsparseTreeFactorGPU_impl.hpp
     CplusplusFactor/sparseTreeFactor_impl.hpp
 #    CplusplusFactor/dsparseTreeFactor_upacked_impl.hpp
     CplusplusFactor/superlu_blas.hpp
@@ -37,10 +29,6 @@ set(SLU_HEADERS
     CplusplusFactor/luAuxStructTemplated.hpp
     CplusplusFactor/xlupanels.hpp
     CplusplusFactor/lu_common.hpp
-    CplusplusFactor/xlupanels_GPU.cuh
-    CplusplusFactor/schurCompUpdate_impl.cuh
-    CplusplusFactor/batch_factorize.h
-    CplusplusFactor/batch_factorize_marshall.h
 )
 #    ${CMAKE_CURRENT_BINARY_DIR}/superlu_dist_config.h
 #    ${PROJECT_SOURCE_DIR}/SRC/superlu_FortranCInterface.h
@@ -48,6 +36,23 @@ set(SLU_HEADERS
 if (MSVC)
   list(APPEND SLU_HEADERS wingetopt.h)
 endif ()
+
+if (TPL_ENABLE_CUDALIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
+  set(SLU_GPU_HEADERS
+    CplusplusFactor/batch_block_copy.h
+    CplusplusFactor/lupanels_GPU.hpp
+    CplusplusFactor/gpublas_gpusolver_wrappers.hpp
+    CplusplusFactor/schurCompUpdate_impl.hpp
+    CplusplusFactor/batch_factorize.h
+    CplusplusFactor/batch_factorize_marshall.h
+    CplusplusFactor/xlupanels_GPU.hpp
+    CplusplusFactor/lupanels_GPU_impl.hpp
+    CplusplusFactor/anc25d-GPU_impl.hpp
+    CplusplusFactor/lupanelsComm3dGPU_impl.hpp
+    CplusplusFactor/dsparseTreeFactorGPU_impl.hpp
+    CplusplusFactor/pdgstrf3d_upacked_impl.hpp
+  )
+endif()
 
 # first: precision-independent files
 set(SLU_SOURCES
@@ -89,12 +94,6 @@ if (TPL_ENABLE_CUDALIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
   )
 endif()
 
-# Add all the BLAS routines: CplusplusFactor/supelu_blas.hpp needs all
-list(APPEND SLU_SOURCES
-  double/dsuperlu_blas.c
-  single/ssuperlu_blas.c
-  complex16/zsuperlu_blas.c
-)
 
 if (MSVC)
   list(APPEND SLU_SOURCES pred-independent/wingetopt.c)
@@ -104,7 +103,8 @@ set_source_files_properties(superlu_timer.c PROPERTIES COMPILE_FLAGS -O0)
 
 if(enable_double)
   list(APPEND SLU_HEADERS
-  include/superlu_ddefs.h include/dlustruct_gpu.h)
+    include/superlu_ddefs.h
+    include/dlustruct_gpu.h)
 
   list(APPEND SLU_SOURCES
     double/dlangs_dist.c
@@ -153,7 +153,6 @@ if(enable_double)
     double/dnrformat_loc3d.c
     double/pdgstrf3d.c
     double/dtreeFactorization.c
-    double/dtreeFactorizationGPU.c
     double/dgather.c
     double/dscatter3d.c
     double/pd3dcomm.c
@@ -163,6 +162,7 @@ if(enable_double)
     double/pdgssvx3d_csc_batch.c # batch in CSC format
     double/dequil_batch.c # batch in CSC format
     double/dpivot_batch.c
+    double/dsuperlu_blas.c    
   )
 
 if (TPL_ENABLE_CUDALIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
@@ -173,8 +173,18 @@ if (TPL_ENABLE_CUDALIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
     double/pdgstrs.c
     double/pdgstrs3d.c
     double/pdgssvx.c
+    double/pdgssvx3d.c     ## 3D code
     double/pdgstrf.c
-    #double/pdgstrf3d.c
+    double/pdutil.c
+    double/pdgstrf3d.c
+    double/dtreeFactorizationGPU.c
+    CplusplusFactor/lupanels_comm3d.cpp
+    CplusplusFactor/lupanelsComm3dGPU.cpp
+    CplusplusFactor/commWrapper.cpp
+    CplusplusFactor/lupanels_GPU.cpp
+    CplusplusFactor/LUgpuCHandle_interface_impl.cpp
+    CplusplusFactor/batch_block_copy.cpp    
+    CplusplusFactor/batch_factorize.cpp
   )
 endif()
 
@@ -258,7 +268,6 @@ if(enable_single)
     single/snrformat_loc3d.c
     single/psgstrf3d.c
     single/streeFactorization.c
-    single/streeFactorizationGPU.c
     single/sgather.c
     single/sscatter3d.c
     single/ps3dcomm.c
@@ -272,6 +281,7 @@ if(enable_single)
     single/psgssvx3d_csc_batch.c # batch in CSC format
     single/sequil_batch.c # batch in CSC format
     single/spivot_batch.c
+    single/ssuperlu_blas.c    
   )
 if (TPL_ENABLE_CUDALIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
   list(APPEND SLU_GPU_SOURCES
@@ -280,8 +290,10 @@ if (TPL_ENABLE_CUDALIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
     single/psgstrs.c
     single/psgstrs3d.c
     single/psgssvx.c
+    #single/psgssvx3d.c     ## 3D code
     single/psgstrf.c
-    #single/psgstrf3d.c
+    single/psgstrf3d.c
+    single/streeFactorizationGPU.c
   )
 endif()
 if (HAVE_COMBBLAS)
@@ -346,7 +358,6 @@ if(enable_complex16)
       complex16/znrformat_loc3d.c
       complex16/pzgstrf3d.c
       complex16/ztreeFactorization.c
-      complex16/ztreeFactorizationGPU.c
       complex16/zgather.c
       complex16/zscatter3d.c
       complex16/pz3dcomm.c
@@ -356,6 +367,7 @@ if(enable_complex16)
       complex16/pzgssvx3d_csc_batch.c # batch in CSC format
       complex16/zequil_batch.c # batch in CSC format
       complex16/zpivot_batch.c
+      complex16/zsuperlu_blas.c      
      )
 if (TPL_ENABLE_GPULIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
   list(APPEND SLU_GPU_SOURCES
@@ -364,8 +376,10 @@ if (TPL_ENABLE_GPULIB OR TPL_ENABLE_HIPLIB OR TPL_ENABLE_SYCLLIB)
     complex16/pzgstrs.c
     complex16/pzgstrs3d.c
     complex16/pzgssvx.c
+    #complex16/pzgssvx3d.c     ## 3D code
     complex16/pzgstrf.c
     complex16/pzgstrf3d.c
+    complex16/ztreeFactorizationGPU.c
   )
 endif()
 if (HAVE_COMBBLAS)
@@ -393,13 +407,13 @@ else()
 endif()
 
 
-target_sources(superlu_dist PRIVATE ${SLU_GPU_SOURCES} ${SLU_SOURCES} ${SLU_HEADERS})
+target_sources(superlu_dist PRIVATE ${SLU_GPU_SOURCES} ${SLU_GPU_HEADERS} ${SLU_SOURCES} ${SLU_HEADERS})
 set(targets superlu_dist)
 target_compile_features(superlu_dist PUBLIC c_std_99)
 
 if (BUILD_SHARED_LIBS AND BUILD_STATIC_LIBS)
   # build both shared and static libs
-  target_sources(superlu_dist-static PRIVATE ${SLU_GPU_SOURCES} ${SLU_SOURCES} ${SLU_HEADERS})
+  target_sources(superlu_dist-static PRIVATE ${SLU_GPU_SOURCES} ${SLU_GPU_HEADERS} ${SLU_SOURCES} ${SLU_HEADERS})
   target_compile_features(superlu_dist-static PUBLIC c_std_99)
   list(APPEND targets superlu_dist-static)
 endif()

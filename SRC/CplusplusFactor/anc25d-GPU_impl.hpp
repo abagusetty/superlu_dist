@@ -2,9 +2,9 @@
 #include <cstdio>
 #include "superlu_ddefs.h"
 #include "lupanels.hpp"
-#include "lupanels_GPU.cuh"
+#include "lupanels_GPU.hpp"
 #include "luAuxStructTemplated.hpp"
-#include "schurCompUpdate_impl.cuh"
+#include "schurCompUpdate_impl.hpp"
 
 template <typename Ftype>
 int_t xLUstruct_t<Ftype>::dAncestorFactorBaselineGPU(

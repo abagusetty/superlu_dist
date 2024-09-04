@@ -95,7 +95,11 @@ void gemm_device_zlsum_fmod(
         const doublecomplex* __restrict__ A, int LDA,
         const doublecomplex* __restrict__ B, int LDB,
         doublecomplex rC[THR_N][THR_M],
-        doublecomplex alpha, doublecomplex beta)
+        doublecomplex alpha, doublecomplex beta
+#ifdef HAVE_SYCL
+        , sycl::nd_item<3> item
+#endif
+                            )
 {
     // #if (__CUDA_ARCH__ >= 200)
     int idx = threadIdx_x;  // thread's m dimension
@@ -112,8 +116,17 @@ void gemm_device_zlsum_fmod(
     // int blx = blockIdx_x;   // block's m dimension
     // int bly = blockIdx_y;   // block's n dimension
 
+    #ifdef HAVE_SYCL
+    sycl::group wrk_grp = item.get_group();
+    using tileA_t = doublecomplex[BLK_K][BLK_M+1];
+    tileA_t& sA = *sycl::ext::oneapi::group_local_memory_for_overwrite<tileA_t>(wrk_grp);
+
+    using tileB_t = doublecomplex[BLK_N][BLK_K+1];
+    tileB_t& sB = *sycl::ext::oneapi::group_local_memory_for_overwrite<tileB_t>(wrk_grp);
+    #else    
     __shared__ doublecomplex sA[BLK_K][BLK_M+1];      // +1 only required if A is transposed
     __shared__ doublecomplex sB[BLK_N][BLK_K+1];      // +1 always required
+    #endif
 
     // Registers for the innermost loop
     doublecomplex rA[THR_M];
@@ -318,7 +331,11 @@ void gemm_device_zlsum_bmod_stridedB(
         const doublecomplex* __restrict__ B, int LDB,
         doublecomplex rC[THR_N][THR_M],
         doublecomplex alpha, doublecomplex beta,
-        int_t lptr, int_t rel, int_t *usub)
+        int_t lptr, int_t rel, int_t *usub
+  #ifdef HAVE_SYCL
+  , sycl::nd_item<3> item
+  #endif        
+                                     )
 {
     // #if (__CUDA_ARCH__ >= 200)
     int idx = threadIdx_x;  // thread's m dimension
@@ -335,8 +352,16 @@ void gemm_device_zlsum_bmod_stridedB(
     // int blx = blockIdx_x;   // block's m dimension
     // int bly = blockIdx_y;   // block's n dimension
 
+    #ifdef HAVE_SYCL
+    sycl::group wrk_grp = item.get_group();
+    using tileA_t = doublecomplex[BLK_K][BLK_M+1];
+    tileA_t& sA = *sycl::ext::oneapi::group_local_memory_for_overwrite<tileA_t>(wrk_grp);
+    using tileB_t = doublecomplex[BLK_N][BLK_K+1];
+    tileB_t& sB = *sycl::ext::oneapi::group_local_memory_for_overwrite<tileB_t>(wrk_grp);
+    #else
     __shared__ doublecomplex sA[BLK_K][BLK_M+1];      // +1 only required if A is transposed
     __shared__ doublecomplex sB[BLK_N][BLK_K+1];      // +1 always required
+    #endif
 
     // Registers for the innermost loop
     doublecomplex rA[THR_M];
@@ -475,14 +500,6 @@ void gemm_device_zlsum_bmod_stridedB(
     }
 }
 
-
-#define cudaCheckError() { \
-    cudaError_t e=cudaGetLastError();                           \
-    if(e!=cudaSuccess) {                       \
-        printf("Cuda failure %s:%d: '%s'\n",__FILE__,__LINE__,cudaGetErrorString(e));                           \
-        exit(EXIT_FAILURE);                   \
-    }                       \
-}
 
 #if 0
 __global__ void simple_shift(int *target, int mype, int npes) {
@@ -2889,8 +2906,6 @@ void zlsum_fmod_inv_gpu_wrap
 
     int nblock_ex = CEILING(nbrow_loc, ((nthread_x * nthread_y) / 32)); //32 (warp) * 8 =256
 
-    int mype;
-
     if(procs==1){
         nblock_ex=0;
     #ifdef SINGLE_RHS_OPT
@@ -3312,7 +3327,11 @@ gridinfo_t *grid
 
                                 gemm_device_zlsum_bmod_stridedB(iknsupc, nrhs, ncol, blx, bly,
                                 &lusup[luptr_tmp1], iknsupc, &x[ii], knsupc, rC,
-                                alpha, beta, lptr, rel, usub);
+                                alpha, beta, lptr, rel, usub
+#ifdef HAVE_SYCL
+                                                                , item
+#endif
+                                                                );
 
                                 #pragma unroll
                                 for (ni = 0; ni < THR_N; ni++) {

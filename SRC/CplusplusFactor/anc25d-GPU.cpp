@@ -1,7 +1,7 @@
 #include <cstdio>
 #include "superlu_ddefs.h"
 #include "lupanels.hpp"
-#include "lupanels_GPU.cuh"
+#include "lupanels_GPU.hpp"
 
 int_t LUstruct_v100::dAncestorFactorBaselineGPU(
     int_t alvl,

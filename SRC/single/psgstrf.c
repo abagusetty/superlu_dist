@@ -1913,13 +1913,7 @@ psgstrf(superlu_dist_options_t * options, int m, int n, float anorm,
         #endif
 
         // destroy streams before freeing
-        for (i = 0; i < nstreams; i++) {
-        #ifdef HAVE_SYCL
-            delete streams[i];
-        #else
-            gpuStreamDestroy(streams[i]);
-        #endif
-        }
+        for (i = 0; i < nstreams; i++) gpuStreamDestroy(streams[i]);
         SUPERLU_FREE( streams );
         SUPERLU_FREE( stream_end_col );
     } else {

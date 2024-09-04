@@ -828,70 +828,19 @@ pdgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
     }
 #endif
 
-#ifdef HAVE_SYCL
-    bigU = nullptr;
-    bigU = new double[size_t(bigu_size)];
-    bigV = nullptr;
-    bigV = new double[size_t(bigv_size)];
-    
-        /* bigU = nullptr; */
-        /* bigU = sycl::malloc_host<double>(size_t(bigu_size), *(sycl_get_queue())); */
-        /* if (bigU == nullptr) */
-        /*   ABORT("Malloc fails for dgemm buffer U "); */
-        /* bigV = nullptr; */
-        /* bigV = sycl::malloc_host<double>(size_t(bigv_size), *(sycl_get_queue())); */
-        /* if (bigV == nullptr) */
-        /*   ABORT("Malloc fails for dgemm buffer V"); */
+#if defined(HAVE_CUDA) || defined(HAVE_HIP) || defined(HAVE_SYCL)
+    checkGPUErrors(gpuHostMalloc((void**)&bigU, bigu_size * sizeof(double), gpuHostMallocDefault));
+    checkGPUErrors(gpuHostMalloc((void**)&bigV, bigv_size * sizeof(double), gpuHostMallocDefault));
 
-        // allocate device memory
-        dA = nullptr;
-        dA = sycl::malloc_device<double>(size_t(max_row_size) * size_t(sp_ienv_dist(3, options)), *(sycl_get_queue()));
-        if (dA == nullptr) {
-          fprintf(stderr, "!!!! Error in allocating A in the device of %ld bytes\n",max_row_size * sp_ienv_dist(3, options)*sizeof(double));
-          return 1;
-        }
+    // allocate device memory
+    checkGPUErrors(gpuMalloc((void**)&dA, max_row_size * sp_ienv_dist(3,options) * sizeof(double)));
+    checkGPUErrors(gpuMalloc((void**)&dB, bigu_size * sizeof(double)));
+    checkGPUErrors(gpuMalloc((void**)&dC, buffer_size * sizeof(double)));
+#endif
 
-        // size of B should be bigu_size
-        dB = nullptr;
-        dB = sycl::malloc_device<double>(size_t(bigu_size), *(sycl_get_queue()));
-        if (dB == nullptr) {
-          fprintf(stderr, "!!!! Error in allocating B in the device of %ld bytes\n",bigu_size*sizeof(double));
-          return 1;
-        }
-
-        dC = nullptr;
-        dC = sycl::malloc_device<double>(size_t(buffer_size), *(sycl_get_queue()));
-        if (dC == nullptr) {
-          fprintf(stderr, "!!!! Error in allocating C in the device of %ld bytes\n",buffer_size*sizeof(double));
-          return 1;
-        }
-#else // CUDA/HIP
-        if ( checkGPU(gpuHostMalloc((void**)&bigU,  bigu_size * sizeof(double), gpuHostMallocDefault)) )
-          ABORT("Malloc fails for dgemm buffer U ");
-        if ( checkGPU(gpuHostMalloc((void**)&bigV, bigv_size * sizeof(double), gpuHostMallocDefault)) )
-          ABORT("Malloc fails for dgemm buffer V");
-
-        handle = (gpublasHandle_t *) SUPERLU_MALLOC(sizeof(gpublasHandle_t)*nstreams);
-        for (i = 0; i < nstreams; i++) handle[i] = create_handle();
-
-        gpuStat = gpuMalloc( (void**)&dA, max_row_size * sp_ienv_dist(3,options) * sizeof(double));
-        if (gpuStat!= gpuSuccess) {
-          fprintf(stderr, "!!!! Error in allocating A in the device of %ld bytes\n",max_row_size*sp_ienv_dist(3,options)*sizeof(double));
-          return 1;
-        }
-
-        // size of B should be bigu_size
-        gpuStat = gpuMalloc((void**)&dB, bigu_size * sizeof(double));
-        if (gpuStat!= gpuSuccess) {
-          fprintf(stderr, "!!!! Error in allocating B in the device of %ld bytes\n",bigu_size*sizeof(double));
-          return 1;
-        }
-
-        gpuStat = gpuMalloc((void**)&dC, buffer_size * sizeof(double) );
-        if (gpuStat!= gpuSuccess) {
-          fprintf(stderr, "!!!! Error in allocating C in the device of %ld bytes\n",buffer_size*sizeof(double));
-          return 1;
-        }
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+    handle = (gpublasHandle_t *) SUPERLU_MALLOC(sizeof(gpublasHandle_t)*nstreams);
+    for (i = 0; i < nstreams; i++) handle[i] = create_handle();
 #endif // CUDA/HIP only
 
     if ( iam==0 && options->PrintStat==YES ) {
@@ -902,16 +851,7 @@ pdgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
 
         // creating streams
         streams = (gpuStream_t *) SUPERLU_MALLOC(sizeof(gpuStream_t)*nstreams);
-        for (i = 0; i < nstreams; ++i) {
-            // TODO: there is support for gpuStreamCreate in SYCL too but
-            // somehow segfault
-            #ifdef HAVE_SYCL
-            streams[i] = new sycl::queue( sycl_get_queue()->get_context(), sycl_get_queue()->get_device(), asyncHandler, sycl::property_list{sycl::property::queue::in_order{}} );
-            std::cout << "creating streams here at pdgstrf.c: " << streams[i] << std::endl;
-            #else
-            checkGPU( gpuStreamCreate(&streams[i]) );
-            #endif
-        }
+        for (i = 0; i < nstreams; ++i) checkGPU( gpuStreamCreate(&streams[i]) );
 
         stat->gpu_buffer += dword * ( max_row_size * sp_ienv_dist(3,options) // dA
                                      + bigu_size                     // dB
@@ -1902,8 +1842,8 @@ pdgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
 
 #ifdef GPU_ACC
     if ( superlu_acc_offload ) {
-        checkGPU (gpuFreeHost (bigV));
-        checkGPU (gpuFreeHost (bigU));
+        checkGPU (gpuFreeHost(bigV));
+        checkGPU (gpuFreeHost(bigU));
         gpuFree( (void*)dA ); /* Sherry added */
         gpuFree( (void*)dB );
         gpuFree( (void*)dC );
@@ -1913,14 +1853,7 @@ pdgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
         #endif
 
         // destroy streams before freeing
-        for (i = 0; i < nstreams; i++) {
-        #ifdef HAVE_SYCL
-            streams[i]->wait();
-            delete streams[i];
-        #else
-            gpuStreamDestroy(streams[i]);
-        #endif
-        }
+        for (i = 0; i < nstreams; i++) gpuStreamDestroy(streams[i]);
         SUPERLU_FREE( streams );
         SUPERLU_FREE( stream_end_col );
     } else {
@@ -2053,4 +1986,3 @@ pdgstrf(superlu_dist_options_t * options, int m, int n, double anorm,
 
     return 0;
 } /* PDGSTRF */
-

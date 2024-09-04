@@ -3,9 +3,9 @@
 #include <iostream>
 #include "superlu_ddefs.h"   // superlu_defs.h ??
 #include "lu_common.hpp"
-#ifdef HAVE_CUDA
-#include "lupanels_GPU.cuh"
-#include "xlupanels_GPU.cuh"
+#ifdef GPU_ACC
+#include "lupanels_GPU.hpp"
+#include "xlupanels_GPU.hpp"
 #include "gpuCommon.hpp"
 #endif
 #include "commWrapper.hpp"
@@ -25,7 +25,7 @@ public:
     Ftype *val;
     // ifdef GPU acceraleration
 
-#ifdef HAVE_CUDA
+#ifdef GPU_ACC
     xlpanelGPU_t<Ftype> gpuPanel;
 #endif
     // bool isDiagIncluded;
@@ -33,7 +33,7 @@ public:
     xlpanel_t(int_t k, int_t *lsub, Ftype *nzval, int_t *xsup, int_t isDiagIncluded);
 
     // default constuctor
-#ifdef HAVE_CUDA
+#ifdef GPU_ACC
     xlpanel_t() : gpuPanel(NULL, NULL)
     {
         index = NULL;
@@ -133,13 +133,13 @@ public:
     //     // SUPERLU_FREE(val);
     // }
 
-#ifdef HAVE_CUDA
+#ifdef GPU_ACC
     xlpanelGPU_t<Ftype> copyToGPU();
     xlpanelGPU_t<Ftype> copyToGPU(void *basePtr); // when we are doing a single allocation
-    int checkGPU();
+    int checkGPUPanel();
     int copyBackToGPU();
 
-    int_t panelSolveGPU(cublasHandle_t handle, cudaStream_t cuStream,
+    int_t panelSolveGPU(gpublasHandle_t handle, gpuStream_t cuStream,
                         int_t ksupsz,
                         Ftype *DiagBlk, // device pointer
                         int_t LDD);
@@ -150,13 +150,13 @@ public:
                                      Ftype thresh, int_t *xsup,
                                      superlu_dist_options_t *options,
                                      SuperLUStat_t *stat, int *info);
-    int_t diagFactorCuSolver(int_t k,
-                             cusolverDnHandle_t cusolverH, cudaStream_t cuStream,
-                             Ftype *dWork, int *dInfo,   // GPU pointers
-                             Ftype *dDiagBuf, int_t LDD, // GPU pointers
-                             threshPivValType<Ftype> thresh, int_t *xsup,
-                             superlu_dist_options_t *options,
-                             SuperLUStat_t *stat, int *info);
+    int_t diagFactorGpuSolver(int_t k,
+                              gpusolverDnHandle_t gpusolverH, gpuStream_t cuStream,
+                              Ftype *dWork, int *dInfo,   // GPU pointers
+                              Ftype *dDiagBuf, int_t LDD, // GPU pointers
+                              threshPivValType<Ftype> thresh, int_t *xsup,
+                              superlu_dist_options_t *options,
+                              SuperLUStat_t *stat, int *info);
 
     Ftype *blkPtrGPU(int k)
     {
@@ -177,14 +177,14 @@ class xupanel_t
 public:
     int_t *index;
     Ftype *val;
-#ifdef HAVE_CUDA
+#ifdef GPU_ACC
     // xupanelGPU_t<Ftype>* upanelGPU;
     xupanelGPU_t<Ftype> gpuPanel;
 #endif
 
     // xupanel_t(int_t *usub, Ftype *uval);
     xupanel_t(int_t k, int_t *usub, Ftype *uval, int_t *xsup);
-#ifdef HAVE_CUDA
+#ifdef GPU_ACC
     xupanel_t() : gpuPanel(NULL, NULL)
     {
         index = NULL;
@@ -304,15 +304,15 @@ public:
     //     SUPERLU_FREE(val);
     // }
 
-#ifdef HAVE_CUDA
+#ifdef GPU_ACC
     xupanelGPU_t<Ftype> copyToGPU();
     // TODO: implement with baseptr
     xupanelGPU_t<Ftype> copyToGPU(void *basePtr);
     int copyBackToGPU();
 
-    int_t panelSolveGPU(cublasHandle_t handle, cudaStream_t cuStream,
+    int_t panelSolveGPU(gpublasHandle_t handle, gpuStream_t cuStream,
                         int_t ksupsz, Ftype *DiagBlk, int_t LDD);
-    int checkGPU();
+    int checkGPUPanel();
 
     Ftype *blkPtrGPU(int k)
     {
@@ -494,13 +494,15 @@ struct xLUstruct_t
             SUPERLU_FREE(A_gpu.dFBufs);
             SUPERLU_FREE(A_gpu.gpuGemmBuffs);
 
-            for (int stream = 0; stream < A_gpu.numCudaStreams; stream++)
+            #ifndef HAVE_SYCL
+            for (int stream = 0; stream < A_gpu.numGpuStreams; stream++)
             {
-                cusolverDnDestroy(A_gpu.cuSolveHandles[stream]);
-                cublasDestroy(A_gpu.cuHandles[stream]);
-                cublasDestroy(A_gpu.lookAheadLHandle[stream]);
-                cublasDestroy(A_gpu.lookAheadUHandle[stream]);
+                gpusolverDnDestroy(A_gpu.cuSolveHandles[stream]);
+                gpublasDestroy(A_gpu.cuHandles[stream]);
+                gpublasDestroy(A_gpu.lookAheadLHandle[stream]);
+                gpublasDestroy(A_gpu.lookAheadUHandle[stream]);
             }
+            #endif
         }
 
         SUPERLU_FREE(isNodeInMyGrid);
@@ -586,7 +588,7 @@ struct xLUstruct_t
         gEtreeInfo_t *gEtreeInfo, // global etree info
         int tag_ub);
     // GPU related functions
-#ifdef HAVE_CUDA
+#ifdef GPU_ACC
     int_t setLUstruct_GPU();
     int_t dsparseTreeFactorGPU(
         sForest_t *sforest,
@@ -609,11 +611,18 @@ struct xLUstruct_t
     int_t dSchurComplementUpdateGPU(
         int streamId,
         int_t k, xlpanel_t<Ftype> &lpanel, xupanel_t<Ftype> &upanel);
+    #ifndef HAVE_SYCL // CUDA, HIP
     int_t dSchurCompUpdatePartGPU(
         int_t iSt, int_t iEnd, int_t jSt, int_t jEnd,
         int_t k, xlpanel_t<Ftype> &lpanel, xupanel_t<Ftype> &upanel,
-        cublasHandle_t handle, cudaStream_t cuStream,
+        gpublasHandle_t handle, gpuStream_t cuStream,
         Ftype *gemmBuff);
+    #else
+    int_t dSchurCompUpdatePartGPU(
+        int_t iSt, int_t iEnd, int_t jSt, int_t jEnd,
+        int_t k, xlpanel_t<Ftype> &lpanel, xupanel_t<Ftype> &upanel,
+        gpuStream_t cuStream, Ftype *gemmBuff);
+    #endif
     int_t lookAheadUpdateGPU(
         int streamId,
         int_t k, int_t laIdx, xlpanel_t<Ftype> &lpanel, xupanel_t<Ftype> &upanel);
@@ -638,7 +647,7 @@ struct xLUstruct_t
     int_t zRecvUPanelGPU(int_t k0, int_t senderGrid, Ftype alpha, Ftype beta);
     int_t copyLUGPUtoHost();
     int_t copyLUHosttoGPU();
-    int_t checkGPU();
+    int_t checkGPUPanel();
 
     // some more helper functions
     xupanel_t<Ftype> getKUpanel(int_t k, int_t offset);

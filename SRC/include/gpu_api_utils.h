@@ -33,6 +33,7 @@ extern "C" {
 #endif
 
 extern void DisplayHeader();
+extern SYCL_EXTERNAL void incScan(int *inOutArr, int *temp, int n, sycl::nd_item<3>& item);
 
 // AB: for now all the functions below are defined only for CUDA, HIP
 #if defined(HAVE_CUDA) || defined(HAVE_HIP)
@@ -41,6 +42,21 @@ extern gpuError_t checkGPU(gpuError_t);
 extern gpublasStatus_t checkGPUblas(gpublasStatus_t);
 extern gpublasHandle_t create_handle ();
 extern void destroy_handle (gpublasHandle_t handle);
+
+static
+void check(gpuError_t result, char const *const func, const char *const file, int const line)
+{
+    if (result)
+    {
+        fprintf(stderr, "GPU error at file %s: line %d code=(%s) \"%s\" \n",
+                file, line, gpuGetErrorString(result), func);
+
+        // Make sure we call GPU Device Reset before exiting
+        exit(EXIT_FAILURE);
+    }
+}
+#define checkGPUErrors(val)  check ( (val), #val, __FILE__, __LINE__ )
+
 #endif // HAVE_CUDA, HAVE_HIP
 
 

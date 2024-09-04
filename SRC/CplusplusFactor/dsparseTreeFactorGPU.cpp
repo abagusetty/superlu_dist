@@ -2,7 +2,7 @@
 #include "superlu_ddefs.h"
 #include "lupanels.hpp"
 #ifdef HAVE_CUDA
-#include "lupanels_GPU.cuh"
+#include "lupanels_GPU.hpp"
 #include "batch_block_copy.h"
 
 // [0, 1, 2, 3] independent
@@ -31,25 +31,25 @@ LUMarshallData::LUMarshallData()
 
 LUMarshallData::~LUMarshallData()
 {
-    gpuErrchk(cudaFree(dev_diag_ptrs));
-    gpuErrchk(cudaFree(dev_panel_ptrs));
-    gpuErrchk(cudaFree(dev_diag_ld_array));
-    gpuErrchk(cudaFree(dev_diag_dim_array));
-    gpuErrchk(cudaFree(dev_info_array));
-    gpuErrchk(cudaFree(dev_panel_ld_array));
-    gpuErrchk(cudaFree(dev_panel_dim_array));
+    checkGPU(cudaFree(dev_diag_ptrs));
+    checkGPU(cudaFree(dev_panel_ptrs));
+    checkGPU(cudaFree(dev_diag_ld_array));
+    checkGPU(cudaFree(dev_diag_dim_array));
+    checkGPU(cudaFree(dev_info_array));
+    checkGPU(cudaFree(dev_panel_ld_array));
+    checkGPU(cudaFree(dev_panel_dim_array));
 }
 
 void LUMarshallData::setBatchSize(int batch_size)
 {
-    gpuErrchk(cudaMalloc(&dev_diag_ptrs, batch_size * sizeof(double*)));
-    gpuErrchk(cudaMalloc(&dev_panel_ptrs, batch_size * sizeof(double*)));
+    checkGPU(cudaMalloc(&dev_diag_ptrs, batch_size * sizeof(double*)));
+    checkGPU(cudaMalloc(&dev_panel_ptrs, batch_size * sizeof(double*)));
 
-    gpuErrchk(cudaMalloc(&dev_diag_ld_array, batch_size * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_diag_dim_array, (batch_size + 1) * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_info_array, batch_size * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_panel_ld_array, batch_size * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_panel_dim_array, (batch_size + 1) * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_diag_ld_array, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_diag_dim_array, (batch_size + 1) * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_info_array, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_panel_ld_array, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_panel_dim_array, (batch_size + 1) * sizeof(int)));
     
     host_diag_ptrs.resize(batch_size);
     host_diag_ld_array.resize(batch_size);
@@ -86,49 +86,49 @@ SCUMarshallData::SCUMarshallData()
 
 SCUMarshallData::~SCUMarshallData()
 {
-    gpuErrchk(cudaFree(dev_A_ptrs));
-    gpuErrchk(cudaFree(dev_B_ptrs));
-    gpuErrchk(cudaFree(dev_C_ptrs));
-    gpuErrchk(cudaFree(dev_lda_array));
-    gpuErrchk(cudaFree(dev_ldb_array));
-    gpuErrchk(cudaFree(dev_ldc_array));
-    gpuErrchk(cudaFree(dev_m_array));
-    gpuErrchk(cudaFree(dev_n_array));
-    gpuErrchk(cudaFree(dev_k_array));
-    gpuErrchk(cudaFree(dev_gpu_lpanels));
-    gpuErrchk(cudaFree(dev_gpu_upanels));
-    gpuErrchk(cudaFree(dev_ist));
-    gpuErrchk(cudaFree(dev_iend));
-    gpuErrchk(cudaFree(dev_jst));
-    gpuErrchk(cudaFree(dev_jend));
-    gpuErrchk(cudaFree(dev_maxGemmCols));
-    gpuErrchk(cudaFree(dev_maxGemmRows));
+    checkGPU(cudaFree(dev_A_ptrs));
+    checkGPU(cudaFree(dev_B_ptrs));
+    checkGPU(cudaFree(dev_C_ptrs));
+    checkGPU(cudaFree(dev_lda_array));
+    checkGPU(cudaFree(dev_ldb_array));
+    checkGPU(cudaFree(dev_ldc_array));
+    checkGPU(cudaFree(dev_m_array));
+    checkGPU(cudaFree(dev_n_array));
+    checkGPU(cudaFree(dev_k_array));
+    checkGPU(cudaFree(dev_gpu_lpanels));
+    checkGPU(cudaFree(dev_gpu_upanels));
+    checkGPU(cudaFree(dev_ist));
+    checkGPU(cudaFree(dev_iend));
+    checkGPU(cudaFree(dev_jst));
+    checkGPU(cudaFree(dev_jend));
+    checkGPU(cudaFree(dev_maxGemmCols));
+    checkGPU(cudaFree(dev_maxGemmRows));
 }
 
 void SCUMarshallData::setBatchSize(int batch_size)
 {
-    gpuErrchk(cudaMalloc(&dev_A_ptrs, batch_size * sizeof(double*)));
-    gpuErrchk(cudaMalloc(&dev_B_ptrs, batch_size * sizeof(double*)));
-    gpuErrchk(cudaMalloc(&dev_C_ptrs, batch_size * sizeof(double*)));
+    checkGPU(cudaMalloc(&dev_A_ptrs, batch_size * sizeof(double*)));
+    checkGPU(cudaMalloc(&dev_B_ptrs, batch_size * sizeof(double*)));
+    checkGPU(cudaMalloc(&dev_C_ptrs, batch_size * sizeof(double*)));
 
-    gpuErrchk(cudaMalloc(&dev_lda_array, batch_size * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_ldb_array, batch_size * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_ldc_array, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_lda_array, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_ldb_array, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_ldc_array, batch_size * sizeof(int)));
 
-    gpuErrchk(cudaMalloc(&dev_m_array, (batch_size + 1) * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_n_array, (batch_size + 1) * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_k_array, (batch_size + 1) * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_m_array, (batch_size + 1) * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_n_array, (batch_size + 1) * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_k_array, (batch_size + 1) * sizeof(int)));
 
-    gpuErrchk(cudaMalloc(&dev_ist, batch_size * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_iend, batch_size * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_jst, batch_size * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_jend, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_ist, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_iend, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_jst, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_jend, batch_size * sizeof(int)));
 
-    gpuErrchk(cudaMalloc(&dev_maxGemmCols, batch_size * sizeof(int)));
-    gpuErrchk(cudaMalloc(&dev_maxGemmRows, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_maxGemmCols, batch_size * sizeof(int)));
+    checkGPU(cudaMalloc(&dev_maxGemmRows, batch_size * sizeof(int)));
 
-    gpuErrchk(cudaMalloc(&dev_gpu_lpanels, batch_size * sizeof(lpanelGPU_t)));
-    gpuErrchk(cudaMalloc(&dev_gpu_upanels, batch_size * sizeof(upanelGPU_t)));
+    checkGPU(cudaMalloc(&dev_gpu_lpanels, batch_size * sizeof(lpanelGPU_t)));
+    checkGPU(cudaMalloc(&dev_gpu_upanels, batch_size * sizeof(upanelGPU_t)));
     
     host_A_ptrs.resize(batch_size);
     host_B_ptrs.resize(batch_size);
@@ -166,28 +166,28 @@ void SCUMarshallData::setMaxDims()
 
 void SCUMarshallData::copyToGPU()
 {
-    gpuErrchk(cudaMemcpy(dev_A_ptrs, host_A_ptrs.data(), batchsize * sizeof(double*), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(dev_B_ptrs, host_B_ptrs.data(), batchsize * sizeof(double*), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(dev_C_ptrs, host_C_ptrs.data(), batchsize * sizeof(double*), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_A_ptrs, host_A_ptrs.data(), batchsize * sizeof(double*), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_B_ptrs, host_B_ptrs.data(), batchsize * sizeof(double*), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_C_ptrs, host_C_ptrs.data(), batchsize * sizeof(double*), cudaMemcpyHostToDevice));
 
-    gpuErrchk(cudaMemcpy(dev_lda_array, host_lda_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(dev_ldb_array, host_ldb_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(dev_ldc_array, host_ldc_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_lda_array, host_lda_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_ldb_array, host_ldb_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_ldc_array, host_ldc_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
 
-    gpuErrchk(cudaMemcpy(dev_m_array, host_m_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(dev_n_array, host_n_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(dev_k_array, host_k_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_m_array, host_m_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_n_array, host_n_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_k_array, host_k_array.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
 
-    gpuErrchk(cudaMemcpy(dev_ist, ist.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(dev_iend, iend.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(dev_jst, jst.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(dev_jend, jend.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_ist, ist.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_iend, iend.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_jst, jst.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_jend, jend.data(), batchsize * sizeof(int), cudaMemcpyHostToDevice));
 }
 
 void SCUMarshallData::copyPanelDataToGPU()
 {
-    gpuErrchk(cudaMemcpy(dev_gpu_lpanels, host_gpu_lpanels.data(), batchsize * sizeof(lpanelGPU_t), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(dev_gpu_upanels, host_gpu_upanels.data(), batchsize * sizeof(upanelGPU_t), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_gpu_lpanels, host_gpu_lpanels.data(), batchsize * sizeof(lpanelGPU_t), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(dev_gpu_upanels, host_gpu_upanels.data(), batchsize * sizeof(upanelGPU_t), cudaMemcpyHostToDevice));
 }
 
 void LUstruct_v100::marshallBatchedBufferCopyData(int k_st, int k_end, int_t *perm_c_supno)
@@ -232,12 +232,12 @@ void LUstruct_v100::marshallBatchedBufferCopyData(int k_st, int k_end, int_t *pe
     mdata.setMaxPanel();
     
     // Then copy the marshalled data over to the GPU 
-    gpuErrchk(cudaMemcpy(mdata.dev_diag_ptrs, diag_ptrs, mdata.batchsize * sizeof(double*), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(mdata.dev_diag_ld_array, diag_ld_batch, mdata.batchsize * sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(mdata.dev_diag_dim_array, diag_dim_batch, mdata.batchsize * sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(mdata.dev_panel_ptrs, panel_ptrs, mdata.batchsize * sizeof(double*), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(mdata.dev_panel_ld_array, panel_ld_batch, mdata.batchsize * sizeof(int), cudaMemcpyHostToDevice));
-    gpuErrchk(cudaMemcpy(mdata.dev_panel_dim_array, panel_dim_batch, mdata.batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(mdata.dev_diag_ptrs, diag_ptrs, mdata.batchsize * sizeof(double*), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(mdata.dev_diag_ld_array, diag_ld_batch, mdata.batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(mdata.dev_diag_dim_array, diag_dim_batch, mdata.batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(mdata.dev_panel_ptrs, panel_ptrs, mdata.batchsize * sizeof(double*), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(mdata.dev_panel_ld_array, panel_ld_batch, mdata.batchsize * sizeof(int), cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(mdata.dev_panel_dim_array, panel_dim_batch, mdata.batchsize * sizeof(int), cudaMemcpyHostToDevice));
 }
 
 #endif
@@ -260,7 +260,7 @@ int_t LUstruct_v100::dDFactPSolveGPU(int_t k, int_t offset, ddiagFactBufs_t **dF
     /*======= Diagonal Factorization ======*/
     if (iam == procIJ(k, k))
     {
-        lPanelVec[g2lCol(k)].diagFactorCuSolver(k,
+        lPanelVec[g2lCol(k)].diagFactorGpuSolver(k,
                         cusolverH, cuStream,
                         A_gpu.diagFactWork[offset], A_gpu.diagFactInfo[offset], // CPU pointers
                         A_gpu.dFBufs[offset], ksupc, // CPU pointers
@@ -268,7 +268,7 @@ int_t LUstruct_v100::dDFactPSolveGPU(int_t k, int_t offset, ddiagFactBufs_t **dF
 
     }
 
-    //CHECK_MALLOC(iam, "after diagFactorCuSolver()");
+    //CHECK_MALLOC(iam, "after diagFactorGpuSolver()");
 		 
     //TODO: need to synchronize the cuda stream 
     /*======= Diagonal Broadcast ======*/
@@ -320,7 +320,7 @@ int_t LUstruct_v100::dDFactPSolveGPU(int_t k, int_t handle_offset, int buffer_of
     /*======= Diagonal Factorization ======*/
     if (iam == procIJ(k, k))
     {
-        lPanelVec[g2lCol(k)].diagFactorCuSolver(k,
+        lPanelVec[g2lCol(k)].diagFactorGpuSolver(k,
                         cusolverH, cuStream, 
                         A_gpu.diagFactWork[handle_offset], A_gpu.diagFactInfo[handle_offset], // CPU pointers
                         A_gpu.dFBufs[buffer_offset], ksupc, // CPU pointers
@@ -328,7 +328,7 @@ int_t LUstruct_v100::dDFactPSolveGPU(int_t k, int_t handle_offset, int buffer_of
                                     
     }
 
-    //CHECK_MALLOC(iam, "after diagFactorCuSolver()");
+    //CHECK_MALLOC(iam, "after diagFactorGpuSolver()");
 		 
     //TODO: need to synchronize the cuda stream 
     /*======= Diagonal Broadcast ======*/
@@ -437,7 +437,7 @@ int_t LUstruct_v100::dPanelBcastGPU(int_t k, int_t offset)
         MPI_Bcast(k_upanel.gpuPanel.index, UidxSendCounts[k], mpi_int_t, krow(k), grid3d->cscp.comm);
         MPI_Bcast(k_upanel.gpuPanel.val, UvalSendCounts[k], MPI_DOUBLE, krow(k), grid3d->cscp.comm);
         // copy the index to cpu
-        gpuErrchk(cudaMemcpy(k_upanel.index, k_upanel.gpuPanel.index,
+        checkGPU(cudaMemcpy(k_upanel.index, k_upanel.gpuPanel.index,
                    sizeof(int_t) * UidxSendCounts[k], cudaMemcpyDeviceToHost));
     }
 
@@ -445,7 +445,7 @@ int_t LUstruct_v100::dPanelBcastGPU(int_t k, int_t offset)
     {
         MPI_Bcast(k_lpanel.gpuPanel.index, LidxSendCounts[k], mpi_int_t, kcol(k), grid3d->rscp.comm);
         MPI_Bcast(k_lpanel.gpuPanel.val, LvalSendCounts[k], MPI_DOUBLE, kcol(k), grid3d->rscp.comm);
-        gpuErrchk(cudaMemcpy(k_lpanel.index, k_lpanel.gpuPanel.index,
+        checkGPU(cudaMemcpy(k_lpanel.index, k_lpanel.gpuPanel.index,
                    sizeof(int_t) * LidxSendCounts[k], cudaMemcpyDeviceToHost));
     }
     SCT->tPanelBcast += (SuperLU_timer_() - t0);
@@ -623,7 +623,7 @@ int_t LUstruct_v100::dsparseTreeFactorGPU(
             int_t offset = getBufferOffset(k0, k1, oldWinSize, winParity, halfWin);
             // printf("Syncing stream %d on offset %d\n", k0, offset);
             if(UidxSendCounts[k]>0 && LidxSendCounts[k]>0)
-                gpuErrchk(cudaStreamSynchronize(A_gpu.cuStreams[offset]));
+                checkGPU(cudaStreamSynchronize(A_gpu.cuStreams[offset]));
         }
 
         k1=k1_next;
@@ -910,7 +910,7 @@ int LUstruct_v100::dsparseTreeFactorBatchGPU(
     double t0 = SuperLU_timer_();
 
     // Copy the nodelist to the GPU 
-    gpuErrchk(cudaMemcpy(A_gpu.dperm_c_supno, perm_c_supno, sizeof(int) * sforest->nNodes, cudaMemcpyHostToDevice));
+    checkGPU(cudaMemcpy(A_gpu.dperm_c_supno, perm_c_supno, sizeof(int) * sforest->nNodes, cudaMemcpyHostToDevice));
 
     // Solve level by level 
     dFactBatchSolve(k_st, k_end, perm_c_supno);

@@ -2,7 +2,6 @@
 #include "superlu_defs.h"
 #include "superlu_zdefs.h"
 #include "superlu_sdefs.h"
-//#include "lupanels.hpp"
 
 template<typename T>
 void superlu_trsm(const char *side, const char *uplo, const char *transa, const char *diag,

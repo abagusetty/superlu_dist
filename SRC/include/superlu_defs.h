@@ -1198,6 +1198,7 @@ int superlu_sort_perm (const void *arg1, const void *arg2)
 }
 #endif
 
+extern void bindGpuMpi(MPI_Comm);  
 #ifdef GPU_ACC   /* GPU related */
 extern void gemm_division_cpu_gpu (superlu_dist_options_t *,
 				   int *, int *, int *, int,

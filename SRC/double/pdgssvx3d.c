@@ -1275,7 +1275,7 @@ void pdgssvx3d(superlu_dist_options_t *options, SuperMatrix *A,
 				printf("Total time = %.4f\n", total_time);
 #endif
 #else 
-					// TODO: How should we handle this?
+                                // TODO: How should we handle this?
 				ABORT("Fatal error: Batched mode requires magma support!\n");
 #endif 
 			}

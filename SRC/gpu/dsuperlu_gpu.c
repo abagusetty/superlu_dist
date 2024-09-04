@@ -22,11 +22,6 @@
 
 #include "dlustruct_gpu.h"
 
-// #ifdef HAVE_HIP
-// #include "superlu_gpu_utils.hip.cpp"
-// #endif
-
-
 //extern "C" {
 //	void cblas_daxpy(const int N, const double alpha, const double *X,
 //	                 const int incX, double *Y, const int incY);
@@ -46,6 +41,10 @@
 
 
 // #define UNIT_STRIDE
+
+#ifdef HAVE_SYCL
+class scatter_sycl_kernel;
+#endif
 
 #if 0  ////////// this routine is not used anymore
 __device__ inline
@@ -232,206 +231,206 @@ void Scatter_GPU_kernel(
 	int nsupc = SuperSize (jb);
 	int ljb = jb / npcol;
 
-        typedef int pfx_dtype ;
-        #ifdef HAVE_SYCL
-        extern SYCL_EXTERNAL __device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n, sycl::nd_item<3>& item);
-        #else
-        extern  __device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n);
-        #endif
+        /* /\* typedef int pfx_dtype ; *\/ */
+        /* /\* #ifdef HAVE_SYCL *\/ */
+        /* /\* extern SYCL_EXTERNAL __device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n, sycl::nd_item<3>& item); *\/ */
+        /* /\* #else *\/ */
+        /* /\* extern  __device__ void incScan(pfx_dtype *inOutArr, pfx_dtype *temp, int n); *\/ */
+        /* /\* #endif *\/ */
 
-	double *tempv1;
-	if (jj_st == jj0)
-	{
-		tempv1 = (j == jj_st) ? bigV
-		         : bigV + Ublock_info[j - 1].full_u_cols * nrows;
-	}
-	else
-	{
-		tempv1 = (j == jj_st) ? bigV
-		         : bigV + (Ublock_info[j - 1].full_u_cols -
-		                   Ublock_info[jj_st - 1].full_u_cols) * nrows;
-	}
+	/* double *tempv1; */
+	/* if (jj_st == jj0) */
+	/* { */
+	/* 	tempv1 = (j == jj_st) ? bigV */
+	/* 	         : bigV + Ublock_info[j - 1].full_u_cols * nrows; */
+	/* } */
+	/* else */
+	/* { */
+	/* 	tempv1 = (j == jj_st) ? bigV */
+	/* 	         : bigV + (Ublock_info[j - 1].full_u_cols - */
+	/* 	                   Ublock_info[jj_st - 1].full_u_cols) * nrows; */
+	/* } */
 
-	/* # of nonzero columns in block j  */
-	int nnz_cols = (j == 0) ? Ublock_info[j].full_u_cols
-	               : (Ublock_info[j].full_u_cols - Ublock_info[j - 1].full_u_cols);
-	int cum_ncol = (j == 0) ? 0
-					: Ublock_info[j - 1].full_u_cols;
+	/* /\* # of nonzero columns in block j  *\/ */
+	/* int nnz_cols = (j == 0) ? Ublock_info[j].full_u_cols */
+	/*                : (Ublock_info[j].full_u_cols - Ublock_info[j - 1].full_u_cols); */
+	/* int cum_ncol = (j == 0) ? 0 */
+	/* 				: Ublock_info[j - 1].full_u_cols; */
 
-	int lptr = Remain_info[lb].lptr;
-	int ib   = Remain_info[lb].ib;
-	int temp_nbrow = lsub[lptr + 1]; /* number of rows in the current L block */
-	lptr += LB_DESCRIPTOR;
+	/* int lptr = Remain_info[lb].lptr; */
+	/* int ib   = Remain_info[lb].ib; */
+	/* int temp_nbrow = lsub[lptr + 1]; /\* number of rows in the current L block *\/ */
+	/* lptr += LB_DESCRIPTOR; */
 
-	int_t cum_nrow;
-	if (ii_st == 0)
-	{
-		cum_nrow = (lb == 0 ? 0 : Remain_info[lb - 1].FullRow);
-	}
-	else
-	{
-		cum_nrow = (lb == 0 ? 0 : Remain_info[lb - 1].FullRow - Remain_info[ii_st - 1].FullRow);
-	}
+	/* int_t cum_nrow; */
+	/* if (ii_st == 0) */
+	/* { */
+	/* 	cum_nrow = (lb == 0 ? 0 : Remain_info[lb - 1].FullRow); */
+	/* } */
+	/* else */
+	/* { */
+	/* 	cum_nrow = (lb == 0 ? 0 : Remain_info[lb - 1].FullRow - Remain_info[ii_st - 1].FullRow); */
+	/* } */
 
-	tempv1 += cum_nrow;
+	/* tempv1 += cum_nrow; */
 
-	if (ib < jb)  /*scatter U code */
-	{
-		int ilst = FstBlockC (ib + 1);
-		int lib =  ib / nprow;   /* local index of row block ib */
-		int_t *index = &UrowindVec[UrowindPtr[lib]];
+	/* if (ib < jb)  /\*scatter U code *\/ */
+	/* { */
+	/* 	int ilst = FstBlockC (ib + 1); */
+	/* 	int lib =  ib / nprow;   /\* local index of row block ib *\/ */
+	/* 	int_t *index = &UrowindVec[UrowindPtr[lib]]; */
 
-		int num_u_blocks = index[0];
+	/* 	int num_u_blocks = index[0]; */
 
-		int ljb = (jb) / npcol; /* local index of column block jb */
+	/* 	int ljb = (jb) / npcol; /\* local index of column block jb *\/ */
 
-		/* Each thread is responsible for one block column */
-                #ifdef HAVE_SYCL
-                auto ljb_ind = *sycl::ext::oneapi::group_local_memory_for_overwrite<int>(item.get_group());
-                #else
-		__shared__ int ljb_ind;
-                #endif
-		/*do a search ljb_ind at local row lib*/
-		int blks_per_threads = CEILING(num_u_blocks, blockDim_x);
-		// printf("blockDim_x =%d \n", blockDim_x);
+	/* 	/\* Each thread is responsible for one block column *\/ */
+        /*         #ifdef HAVE_SYCL */
+        /*         auto ljb_ind = *sycl::ext::oneapi::group_local_memory_for_overwrite<int>(item.get_group()); */
+        /*         #else */
+	/* 	__shared__ int ljb_ind; */
+        /*         #endif */
+	/* 	/\*do a search ljb_ind at local row lib*\/ */
+	/* 	int blks_per_threads = CEILING(num_u_blocks, blockDim_x); */
+	/* 	// printf("blockDim_x =%d \n", blockDim_x); */
 
-		for (int i = 0; i < blks_per_threads; ++i)
-			/* each thread is assigned a chunk of consecutive U blocks to search */
-		{
-			/* only one thread finds the block index matching ljb */
-			if (thread_id * blks_per_threads + i < num_u_blocks &&
-			        local_u_blk_infoVec[ local_u_blk_infoPtr[lib] + thread_id * blks_per_threads + i ].ljb == ljb)
-			{
-				ljb_ind = thread_id * blks_per_threads + i;
-			}
-		}
-		__syncthreads();
+	/* 	for (int i = 0; i < blks_per_threads; ++i) */
+	/* 		/\* each thread is assigned a chunk of consecutive U blocks to search *\/ */
+	/* 	{ */
+	/* 		/\* only one thread finds the block index matching ljb *\/ */
+	/* 		if (thread_id * blks_per_threads + i < num_u_blocks && */
+	/* 		        local_u_blk_infoVec[ local_u_blk_infoPtr[lib] + thread_id * blks_per_threads + i ].ljb == ljb) */
+	/* 		{ */
+	/* 			ljb_ind = thread_id * blks_per_threads + i; */
+	/* 		} */
+	/* 	} */
+	/* 	__syncthreads(); */
 
-		int iuip_lib = local_u_blk_infoVec[ local_u_blk_infoPtr[lib] + ljb_ind].iuip;
-		int ruip_lib = local_u_blk_infoVec[ local_u_blk_infoPtr[lib] + ljb_ind].ruip;
-		iuip_lib += UB_DESCRIPTOR;
-		double *Unzval_lib = &UnzvalVec[UnzvalPtr[lib]];
-		double *ucol = &Unzval_lib[ruip_lib];
+	/* 	int iuip_lib = local_u_blk_infoVec[ local_u_blk_infoPtr[lib] + ljb_ind].iuip; */
+	/* 	int ruip_lib = local_u_blk_infoVec[ local_u_blk_infoPtr[lib] + ljb_ind].ruip; */
+	/* 	iuip_lib += UB_DESCRIPTOR; */
+	/* 	double *Unzval_lib = &UnzvalVec[UnzvalPtr[lib]]; */
+	/* 	double *ucol = &Unzval_lib[ruip_lib]; */
 
-		if (thread_id < temp_nbrow) /* row-wise */
-		{
-		    /* cyclically map each thread to a row */
-		    indirect_lptr[thread_id] = (int) lsub[lptr + thread_id];
-		}
+	/* 	if (thread_id < temp_nbrow) /\* row-wise *\/ */
+	/* 	{ */
+	/* 	    /\* cyclically map each thread to a row *\/ */
+	/* 	    indirect_lptr[thread_id] = (int) lsub[lptr + thread_id]; */
+	/* 	} */
 
-		/* column-wise: each thread is assigned one column */
-		if (thread_id < nnz_cols)
-			IndirectJ3[thread_id] = A_gpu->scubufs[streamId].usub_IndirectJ3[cum_ncol + thread_id];
-		/* indirectJ3[j] == kk means the j-th nonzero segment
-		   points to column kk in this supernode */
+	/* 	/\* column-wise: each thread is assigned one column *\/ */
+	/* 	if (thread_id < nnz_cols) */
+	/* 		IndirectJ3[thread_id] = A_gpu->scubufs[streamId].usub_IndirectJ3[cum_ncol + thread_id]; */
+	/* 	/\* indirectJ3[j] == kk means the j-th nonzero segment */
+	/* 	   points to column kk in this supernode *\/ */
 
-		__syncthreads();
+	/* 	__syncthreads(); */
 
-		/* threads are divided into multiple columns */
-		int ColPerBlock = blockDim_x / temp_nbrow;
+	/* 	/\* threads are divided into multiple columns *\/ */
+	/* 	int ColPerBlock = blockDim_x / temp_nbrow; */
 
-		// if (thread_id < blockDim_x)
-		// 	IndirectJ1[thread_id] = 0;
-		if (thread_id < ldt)
-			IndirectJ1[thread_id] = 0;
+	/* 	// if (thread_id < blockDim_x) */
+	/* 	// 	IndirectJ1[thread_id] = 0; */
+	/* 	if (thread_id < ldt) */
+	/* 		IndirectJ1[thread_id] = 0; */
 
-		if (thread_id < blockDim_x)
-		{
-		    if (thread_id < nsupc)
-		    {
-			/* fstnz subscript of each column in the block */
-			IndirectJ1[thread_id] = -index[iuip_lib + thread_id] + ilst;
-		    }
-		}
+	/* 	if (thread_id < blockDim_x) */
+	/* 	{ */
+	/* 	    if (thread_id < nsupc) */
+	/* 	    { */
+	/* 		/\* fstnz subscript of each column in the block *\/ */
+	/* 		IndirectJ1[thread_id] = -index[iuip_lib + thread_id] + ilst; */
+	/* 	    } */
+	/* 	} */
 
-		/* perform an inclusive block-wide prefix sum among all threads */
-		__syncthreads();
+	/* 	/\* perform an inclusive block-wide prefix sum among all threads *\/ */
+	/* 	__syncthreads(); */
 
-                #ifdef HAVE_SYCL
-                incScan(IndirectJ1, pfxStorage, nsupc, item);
-                #else
-                incScan(IndirectJ1, pfxStorage, nsupc);
-                #endif
+        /*         #ifdef HAVE_SYCL */
+        /*         incScan(IndirectJ1, pfxStorage, nsupc, item); */
+        /*         #else */
+        /*         incScan(IndirectJ1, pfxStorage, nsupc); */
+        /*         #endif */
 
-		__syncthreads();
+	/* 	__syncthreads(); */
 
-		device_scatter_u_2D (
-		    thread_id,
-		    temp_nbrow,  nsupc,
-		    ucol,
-		    usub, iukp,
-		    ilst, klst,
-		    index, iuip_lib,
-		    tempv1, nrows,
-		    indirect_lptr,
-		    nnz_cols, ColPerBlock,
-		    IndirectJ1,
-		    IndirectJ3 );
+	/* 	device_scatter_u_2D ( */
+	/* 	    thread_id, */
+	/* 	    temp_nbrow,  nsupc, */
+	/* 	    ucol, */
+	/* 	    usub, iukp, */
+	/* 	    ilst, klst, */
+	/* 	    index, iuip_lib, */
+	/* 	    tempv1, nrows, */
+	/* 	    indirect_lptr, */
+	/* 	    nnz_cols, ColPerBlock, */
+	/* 	    IndirectJ1, */
+	/* 	    IndirectJ3 ); */
 
-	}
-	else     /* ib >= jb, scatter L code */
-	{
+	/* } */
+	/* else     /\* ib >= jb, scatter L code *\/ */
+	/* { */
 
-		int rel;
-		double *nzval;
-		int_t *index = &LrowindVec[LrowindPtr[ljb]];
-		int num_l_blocks = index[0];
-		int ldv = index[1];
+	/* 	int rel; */
+	/* 	double *nzval; */
+	/* 	int_t *index = &LrowindVec[LrowindPtr[ljb]]; */
+	/* 	int num_l_blocks = index[0]; */
+	/* 	int ldv = index[1]; */
 
-		int fnz = FstBlockC (ib);
-		int lib = ib / nprow;
+	/* 	int fnz = FstBlockC (ib); */
+	/* 	int lib = ib / nprow; */
 
-                #ifdef HAVE_SYCL
-                auto lib_ind = *sycl::ext::oneapi::group_local_memory_for_overwrite<int>(item.get_group());
-                #else
-		__shared__ int lib_ind;
-                #endif
-		/*do a search lib_ind for lib*/
-		int blks_per_threads = CEILING(num_l_blocks, blockDim_x);
-		for (int i = 0; i < blks_per_threads; ++i)
-		{
-			if (thread_id * blks_per_threads + i < num_l_blocks &&
-			        local_l_blk_infoVec[ local_l_blk_infoPtr[ljb] + thread_id * blks_per_threads + i ].lib == lib)
-			{
-				lib_ind = thread_id * blks_per_threads + i;
-			}
-		}
-		__syncthreads();
+        /*         #ifdef HAVE_SYCL */
+        /*         auto lib_ind = *sycl::ext::oneapi::group_local_memory_for_overwrite<int>(item.get_group()); */
+        /*         #else */
+	/* 	__shared__ int lib_ind; */
+        /*         #endif */
+	/* 	/\*do a search lib_ind for lib*\/ */
+	/* 	int blks_per_threads = CEILING(num_l_blocks, blockDim_x); */
+	/* 	for (int i = 0; i < blks_per_threads; ++i) */
+	/* 	{ */
+	/* 		if (thread_id * blks_per_threads + i < num_l_blocks && */
+	/* 		        local_l_blk_infoVec[ local_l_blk_infoPtr[ljb] + thread_id * blks_per_threads + i ].lib == lib) */
+	/* 		{ */
+	/* 			lib_ind = thread_id * blks_per_threads + i; */
+	/* 		} */
+	/* 	} */
+	/* 	__syncthreads(); */
 
-		int lptrj = local_l_blk_infoVec[ local_l_blk_infoPtr[ljb] + lib_ind].lptrj;
-		int luptrj = local_l_blk_infoVec[ local_l_blk_infoPtr[ljb] + lib_ind].luptrj;
-		lptrj += LB_DESCRIPTOR;
-		int dest_nbrow = index[lptrj - 1];
+	/* 	int lptrj = local_l_blk_infoVec[ local_l_blk_infoPtr[ljb] + lib_ind].lptrj; */
+	/* 	int luptrj = local_l_blk_infoVec[ local_l_blk_infoPtr[ljb] + lib_ind].luptrj; */
+	/* 	lptrj += LB_DESCRIPTOR; */
+	/* 	int dest_nbrow = index[lptrj - 1]; */
 
-		if (thread_id < dest_nbrow)
-		{
-		    rel = index[lptrj + thread_id] - fnz;
-		    indirect_lptr[rel] = thread_id;
-		}
-		__syncthreads();
+	/* 	if (thread_id < dest_nbrow) */
+	/* 	{ */
+	/* 	    rel = index[lptrj + thread_id] - fnz; */
+	/* 	    indirect_lptr[rel] = thread_id; */
+	/* 	} */
+	/* 	__syncthreads(); */
 
-		/* can be precalculated */
-		if (thread_id < temp_nbrow)
-		{
-			rel = lsub[lptr + thread_id] - fnz;
-			indirect2_thread[thread_id] = indirect_lptr[rel];
-		}
-		if (thread_id < nnz_cols)
-			IndirectJ3[thread_id] = (int) A_gpu->scubufs[streamId].usub_IndirectJ3[cum_ncol + thread_id];
-		__syncthreads();
+	/* 	/\* can be precalculated *\/ */
+	/* 	if (thread_id < temp_nbrow) */
+	/* 	{ */
+	/* 		rel = lsub[lptr + thread_id] - fnz; */
+	/* 		indirect2_thread[thread_id] = indirect_lptr[rel]; */
+	/* 	} */
+	/* 	if (thread_id < nnz_cols) */
+	/* 		IndirectJ3[thread_id] = (int) A_gpu->scubufs[streamId].usub_IndirectJ3[cum_ncol + thread_id]; */
+	/* 	__syncthreads(); */
 
-		int ColPerBlock = blockDim_x / temp_nbrow;
+	/* 	int ColPerBlock = blockDim_x / temp_nbrow; */
 
-		nzval = &LnzvalVec[LnzvalPtr[ljb]] + luptrj;
-		ddevice_scatter_l_2D(
-		    thread_id,
-		    nsupc, temp_nbrow,
-		    usub, iukp, klst,
-		    nzval, ldv,
-		    tempv1, nrows, indirect2_thread,
-		    nnz_cols, ColPerBlock,
-		    IndirectJ3);
-	} /* end else ib >= jb */
+	/* 	nzval = &LnzvalVec[LnzvalPtr[ljb]] + luptrj; */
+	/* 	ddevice_scatter_l_2D( */
+	/* 	    thread_id, */
+	/* 	    nsupc, temp_nbrow, */
+	/* 	    usub, iukp, klst, */
+	/* 	    nzval, ldv, */
+	/* 	    tempv1, nrows, indirect2_thread, */
+	/* 	    nnz_cols, ColPerBlock, */
+	/* 	    IndirectJ3); */
+	/* } /\* end else ib >= jb *\/ */
 
 } /* end Scatter_GPU_kernel */
 
@@ -542,34 +541,36 @@ int dSchurCompUpdate_GPU(
 	gpuEventRecord(stat->GemmEnd[k0], FunCallStream);
 	gpuEventRecord(stat->ScatterEnd[k0], FunCallStream);
 
-	checkGPU(gpuMemcpyAsync(A_gpu->scubufs[streamId].usub_IndirectJ3,
-	                          A_gpu->scubufs[streamId].usub_IndirectJ3_host,
-	                          ncols * sizeof(int_t), gpuMemcpyHostToDevice,
-	                          FunCallStream)) ;
+	gpuMemcpyAsync(A_gpu->scubufs[streamId].usub_IndirectJ3,
+                       A_gpu->scubufs[streamId].usub_IndirectJ3_host,
+                       ncols * sizeof(int_t), gpuMemcpyHostToDevice,
+                       FunCallStream);
 
-	checkGPU(gpuMemcpyAsync(A_gpu->scubufs[streamId].Remain_L_buff, Remain_L_buff,
-	                          Remain_lbuf_send_size * sizeof(double),
-	                          gpuMemcpyHostToDevice, FunCallStream)) ;
+	gpuMemcpyAsync(A_gpu->scubufs[streamId].Remain_L_buff, Remain_L_buff,
+                       Remain_lbuf_send_size * sizeof(double),
+                       gpuMemcpyHostToDevice, FunCallStream);
 
-	checkGPU(gpuMemcpyAsync(A_gpu->scubufs[streamId].bigU, bigU,
-	                          bigu_send_size * sizeof(double),
-	                          gpuMemcpyHostToDevice, FunCallStream) );
+	gpuMemcpyAsync(A_gpu->scubufs[streamId].bigU, bigU,
+                       bigu_send_size * sizeof(double),
+                       gpuMemcpyHostToDevice, FunCallStream);
 
-	checkGPU(gpuMemcpyAsync(A_gpu->scubufs[streamId].Remain_info, Remain_info,
-	                          RemainBlk * sizeof(Remain_info_t),
-	                          gpuMemcpyHostToDevice, FunCallStream) );
+	gpuMemcpyAsync(A_gpu->scubufs[streamId].Remain_info, Remain_info,
+                       RemainBlk * sizeof(Remain_info_t),
+                       gpuMemcpyHostToDevice, FunCallStream);
 
-	checkGPU(gpuMemcpyAsync(A_gpu->scubufs[streamId].Ublock_info, Ublock_info,
-	                          mcb * sizeof(Ublock_info_t), gpuMemcpyHostToDevice,
-	                          FunCallStream) );
+	gpuMemcpyAsync(A_gpu->scubufs[streamId].Ublock_info, Ublock_info,
+                       mcb * sizeof(Ublock_info_t), gpuMemcpyHostToDevice,
+                       FunCallStream);
 
-	checkGPU(gpuMemcpyAsync(A_gpu->scubufs[streamId].lsub, lsub,
-	                          lsub_len * sizeof(int_t), gpuMemcpyHostToDevice,
-	                          FunCallStream) );
+	gpuMemcpyAsync(A_gpu->scubufs[streamId].lsub, lsub,
+                       lsub_len * sizeof(int_t), gpuMemcpyHostToDevice,
+                       FunCallStream);
 
-	checkGPU(gpuMemcpyAsync(A_gpu->scubufs[streamId].usub, usub,
-	                          usub_len * sizeof(int_t), gpuMemcpyHostToDevice,
-	                          FunCallStream) );
+	gpuMemcpyAsync(A_gpu->scubufs[streamId].usub, usub,
+                       usub_len * sizeof(int_t), gpuMemcpyHostToDevice,
+                       FunCallStream);
+
+
 
 	stat->tHost_PCIeH2D += SuperLU_timer_() - tTmp;
 	stat->cPCIeH2D += Remain_lbuf_send_size * sizeof(double)
@@ -680,10 +681,10 @@ int dSchurCompUpdate_GPU(
 		    gpublasSetStream(gpublas_handle0, FunCallStream);
 		    gpuEventRecord(stat->GemmStart[k0], FunCallStream);
 		    gpublasDgemm(gpublas_handle0, GPUBLAS_OP_N, GPUBLAS_OP_N,
-		            nrows, ncols, ldu, &alpha,
-		            &A_gpu->scubufs[streamId].Remain_L_buff[(knsupc - ldu) * Rnbrow + st_row], Rnbrow,
-		            &A_gpu->scubufs[streamId].bigU[st_col * ldu], ldu,
-		            &beta, A_gpu->scubufs[streamId].bigV, nrows);
+                                 nrows, ncols, ldu, &alpha,
+                                 &A_gpu->scubufs[streamId].Remain_L_buff[(knsupc - ldu) * Rnbrow + st_row], Rnbrow,
+                                 &A_gpu->scubufs[streamId].bigU[st_col * ldu], ldu,
+                                 &beta, A_gpu->scubufs[streamId].bigV, nrows);
                     #else
 		    oneapi::mkl::blas::column_major::gemm(*FunCallStream, GPUBLAS_OP_N, GPUBLAS_OP_N,
 		            nrows, ncols, ldu, alpha,
@@ -710,7 +711,7 @@ int dSchurCompUpdate_GPU(
                     auto global_range = dimBlock * dimGrid;
                     FunCallStream->submit([&](sycl::handler &cgh) {
                         sycl::local_accessor<int, 1> localmem(sycl::range<1>(4*ldt + 2*SCATTER_THREAD_BLOCK_SIZE), cgh);
-                        cgh.parallel_for(sycl::nd_range<3>(global_range, dimBlock),
+                        cgh.parallel_for<class scatter_sycl_kernel>(sycl::nd_range<3>(global_range, dimBlock),
                                          [=](sycl::nd_item<3> item) {
                                            Scatter_GPU_kernel(streamId, ii_st, ii_end,  jj_st, jj_end, klst,
                                                               0, nrows, ldt, npcol, nprow, dA_gpu, item, localmem.get_multi_ptr<sycl::access::decorated::yes>().get());
@@ -799,23 +800,23 @@ int dfree_LUstruct_gpu (
 	int streamId = 0;
 
 	/* Free the L data structure on GPU */
-	checkGPU(gpuFree(A_gpu->LrowindVec));
-	checkGPU(gpuFree(A_gpu->LrowindPtr));
+	gpuFree(A_gpu->LrowindVec);
+	gpuFree(A_gpu->LrowindPtr);
 
-	checkGPU(gpuFree(A_gpu->LnzvalVec));
-	checkGPU(gpuFree(A_gpu->LnzvalPtr));
+	gpuFree(A_gpu->LnzvalVec);
+	gpuFree(A_gpu->LnzvalPtr);
 	free(A_gpu->LnzvalPtr_host);
 
 	/*freeing the pinned memory*/
-	checkGPU (gpuFreeHost (A_gpu->scubufs[streamId].Remain_info_host));
-	checkGPU (gpuFreeHost (A_gpu->scubufs[streamId].Ublock_info_host));
-	checkGPU (gpuFreeHost (A_gpu->scubufs[streamId].Remain_L_buff_host));
-	checkGPU (gpuFreeHost (A_gpu->scubufs[streamId].bigU_host));
+	gpuFreeHost(A_gpu->scubufs[streamId].Remain_info_host);
+	gpuFreeHost(A_gpu->scubufs[streamId].Ublock_info_host);
+	gpuFreeHost(A_gpu->scubufs[streamId].Remain_L_buff_host);
+	gpuFreeHost(A_gpu->scubufs[streamId].bigU_host);
 
-	checkGPU(gpuFreeHost(A_gpu->acc_L_buff));
-	checkGPU(gpuFreeHost(A_gpu->acc_U_buff));
-	checkGPU(gpuFreeHost(A_gpu->scubufs[streamId].lsub_buf));
-	checkGPU(gpuFreeHost(A_gpu->scubufs[streamId].usub_buf));
+	gpuFreeHost(A_gpu->acc_L_buff);
+	gpuFreeHost(A_gpu->acc_U_buff);
+	gpuFreeHost(A_gpu->scubufs[streamId].lsub_buf);
+	gpuFreeHost(A_gpu->scubufs[streamId].usub_buf);
 
 
 	SUPERLU_FREE(stat->isOffloaded); // changed to SUPERLU_MALLOC/SUPERLU_FREE
@@ -829,40 +830,40 @@ int dfree_LUstruct_gpu (
 	SUPERLU_FREE(A_gpu->perm_c_supno);
 
 	/* Free the U data structure on GPU */
-	checkGPU(gpuFree(A_gpu->UrowindVec));
-	checkGPU(gpuFree(A_gpu->UrowindPtr));
+	gpuFree(A_gpu->UrowindVec);
+	gpuFree(A_gpu->UrowindPtr);
 
 	free(A_gpu->UnzvalPtr_host);
 	//free(A_gpu->UrowindPtr_host); // Sherry: this is NOT allocated
 
-	checkGPU(gpuFree(A_gpu->UnzvalVec));
-	checkGPU(gpuFree(A_gpu->UnzvalPtr));
+	gpuFree(A_gpu->UnzvalVec);
+	gpuFree(A_gpu->UnzvalPtr);
 
-	//checkGPU(gpuFree(A_gpu->grid)); // Sherry: this is not used
+	//gpuFree(A_gpu->grid); // Sherry: this is not used
 
 	/* Free the Schur complement structure on GPU */
-	checkGPU(gpuFree(A_gpu->scubufs[streamId].bigV));
-	checkGPU(gpuFree(A_gpu->scubufs[streamId].bigU));
+	gpuFree(A_gpu->scubufs[streamId].bigV);
+	gpuFree(A_gpu->scubufs[streamId].bigU);
 
-	checkGPU(gpuFree(A_gpu->scubufs[streamId].Remain_L_buff));
-	checkGPU(gpuFree(A_gpu->scubufs[streamId].Ublock_info));
-	checkGPU(gpuFree(A_gpu->scubufs[streamId].Remain_info));
+	gpuFree(A_gpu->scubufs[streamId].Remain_L_buff);
+	gpuFree(A_gpu->scubufs[streamId].Ublock_info);
+	gpuFree(A_gpu->scubufs[streamId].Remain_info);
 
-	// checkGPU(gpuFree(A_gpu->indirect));
-	// checkGPU(gpuFree(A_gpu->indirect2));
-	checkGPU(gpuFree(A_gpu->xsup));
+	// gpuFree(A_gpu->indirect);
+	// gpuFree(A_gpu->indirect2);
+	gpuFree(A_gpu->xsup);
 
-	checkGPU(gpuFree(A_gpu->scubufs[streamId].lsub));
-	checkGPU(gpuFree(A_gpu->scubufs[streamId].usub));
+	gpuFree(A_gpu->scubufs[streamId].lsub);
+	gpuFree(A_gpu->scubufs[streamId].usub);
 
-	checkGPU(gpuFree(A_gpu->local_l_blk_infoVec));
-	checkGPU(gpuFree(A_gpu->local_l_blk_infoPtr));
+	gpuFree(A_gpu->local_l_blk_infoVec);
+	gpuFree(A_gpu->local_l_blk_infoPtr);
 #if 0
-	checkGPU(gpuFree(A_gpu->jib_lookupVec)); // not used
-	checkGPU(gpuFree(A_gpu->jib_lookupPtr)); // not used
+	gpuFree(A_gpu->jib_lookupVec); // not used
+	gpuFree(A_gpu->jib_lookupPtr); // not used
 #endif
-	checkGPU(gpuFree(A_gpu->local_u_blk_infoVec));
-	checkGPU(gpuFree(A_gpu->local_u_blk_infoPtr));
+	gpuFree(A_gpu->local_u_blk_infoVec);
+	gpuFree(A_gpu->local_u_blk_infoPtr);
 
 	/* Destroy all the meta-structures associated with the streams. */
     	gpuStreamDestroy(sluGPU->CopyStream);
@@ -881,8 +882,8 @@ int dfree_LUstruct_gpu (
 void dPrint_matrix( char *desc, int_t m, int_t n, double * dA, int_t lda )
 {
 	double *cPtr = (double *) malloc(sizeof(double) * lda * n);
-	checkGPU(gpuMemcpy( cPtr, dA,
-	                      lda * n * sizeof(double), gpuMemcpyDeviceToHost)) ;
+	gpuMemcpy( cPtr, dA,
+                   lda * n * sizeof(double), gpuMemcpyDeviceToHost);
 
 	int_t i, j;
 	printf( "\n %s\n", desc );
@@ -939,15 +940,15 @@ int dinitSluGPU3D_t(
 	}
     }
 
-    std::cout << "1. Copystream in dsuperlu_gpu.c\n";
+    printf("1. Copystream in dsuperlu_gpu.c\n");
     gpuStreamCreate(&(sluGPU->CopyStream));
-    std::cout << "2. Copystream in dsuperlu_gpu.c\n";    
+    printf("2. Copystream in dsuperlu_gpu.c\n");
 
     for (int streamId = 0; streamId < sluGPU->nGPUStreams; streamId++)
     {
-        std::cout << "1. funCallStreams in dsuperlu_gpu.c\n";
+        printf("1. funCallStreams in dsuperlu_gpu.c\n");
 	gpuStreamCreate(&(sluGPU->funCallStreams[streamId]));
-        std::cout << "2. funCallStreams in dsuperlu_gpu.c\n";
+        printf("2. funCallStreams in dsuperlu_gpu.c\n");
         #ifndef HAVE_SYCL
 	gpublasCreate(&(sluGPU->gpublasHandles[streamId]));
         #endif
@@ -1144,7 +1145,8 @@ int dreduceGPUlu(
 int dwaitGPUscu(int streamId, dsluGPU_t *sluGPU, SCT_t *SCT)
 {
     double ttx = SuperLU_timer_();
-    gpuStreamSynchronize(sluGPU->funCallStreams[streamId]);
+    sluGPU->funCallStreams[streamId]->wait();
+    //gpuStreamSynchronize(sluGPU->funCallStreams[streamId]);
     SCT->PhiWaitTimer += SuperLU_timer_() - ttx;
     return 0;
 }
@@ -1167,12 +1169,13 @@ int dsendLUpanelGPU2HOST(
     double tty = SuperLU_timer_();
     gpuEventRecord(stat->ePCIeD2H_Start[k0], CopyStream);
     if (copyL_kljb)
-	checkGPU(gpuMemcpyAsync(A_gpu->acc_L_buff, &A_gpu->LnzvalVec[A_gpu->LnzvalPtr_host[kljb]],
-				  l_copy_len * sizeof(double), gpuMemcpyDeviceToHost, CopyStream ) );
+      gpuMemcpyAsync(A_gpu->acc_L_buff, &A_gpu->LnzvalVec[A_gpu->LnzvalPtr_host[kljb]],
+                     l_copy_len * sizeof(double), gpuMemcpyDeviceToHost, CopyStream);
 
     if (copyU_kljb)
-	checkGPU(gpuMemcpyAsync(A_gpu->acc_U_buff, &A_gpu->UnzvalVec[A_gpu->UnzvalPtr_host[kijb]],
-				  u_copy_len * sizeof(double), gpuMemcpyDeviceToHost, CopyStream ) );
+      gpuMemcpyAsync(A_gpu->acc_U_buff, &A_gpu->UnzvalVec[A_gpu->UnzvalPtr_host[kijb]],
+                     u_copy_len * sizeof(double), gpuMemcpyDeviceToHost, CopyStream);
+
     gpuEventRecord(stat->ePCIeD2H_End[k0], CopyStream);
     stat->tHost_PCIeD2H += SuperLU_timer_() - tty;
     stat->cPCIeD2H += u_copy_len * sizeof(double) + l_copy_len * sizeof(double);
@@ -1283,49 +1286,49 @@ void dCopyLUToGPU3D (
       Paged-locked memory by gpuMallocHost is accessible to the device.*/
     for (int streamId = 0; streamId < nGPUStreams; streamId++ ) {
 	void *tmp_ptr;
-	checkGPUErrors(gpuMallocHost(  &tmp_ptr, (n) * sizeof(int_t) )) ;
+	gpuMallocHost(  &tmp_ptr, (n) * sizeof(int_t) );
 	A_gpu->scubufs[streamId].usub_IndirectJ3_host = (int_t*) tmp_ptr;
 
-	checkGPUErrors(gpuMalloc( &tmp_ptr,  ( n) * sizeof(int_t) ));
+	gpuMalloc( &tmp_ptr,  ( n) * sizeof(int_t) );
 	A_gpu->scubufs[streamId].usub_IndirectJ3 =  (int_t*) tmp_ptr;
 	gpu_mem_used += ( n) * sizeof(int_t);
-	checkGPUErrors(gpuMallocHost(  &tmp_ptr, mrb * sizeof(Remain_info_t) )) ;
+	gpuMallocHost(  &tmp_ptr, mrb * sizeof(Remain_info_t) );
 	A_gpu->scubufs[streamId].Remain_info_host = (Remain_info_t*)tmp_ptr;
-	checkGPUErrors(gpuMallocHost(  &tmp_ptr, mcb * sizeof(Ublock_info_t) )) ;
+	gpuMallocHost(  &tmp_ptr, mcb * sizeof(Ublock_info_t) );
 	A_gpu->scubufs[streamId].Ublock_info_host = (Ublock_info_t*)tmp_ptr;
-	checkGPUErrors(gpuMallocHost(  &tmp_ptr,  remain_l_max * sizeof(double) )) ;
+	gpuMallocHost(  &tmp_ptr,  remain_l_max * sizeof(double) );
 	A_gpu->scubufs[streamId].Remain_L_buff_host = (double *) tmp_ptr;
-	checkGPUErrors(gpuMallocHost(  &tmp_ptr,  bigu_size * sizeof(double) )) ;
+	gpuMallocHost(  &tmp_ptr,  bigu_size * sizeof(double) );
 	A_gpu->scubufs[streamId].bigU_host = (double *) tmp_ptr;
 
-	checkGPUErrors(gpuMallocHost ( &tmp_ptr, sizeof(double) * (A_host->bufmax[1])));
+	gpuMallocHost ( &tmp_ptr, sizeof(double) * (A_host->bufmax[1]));
 	A_gpu->acc_L_buff = (double *) tmp_ptr;
-	checkGPUErrors(gpuMallocHost ( &tmp_ptr, sizeof(double) * (A_host->bufmax[3])));
+	gpuMallocHost ( &tmp_ptr, sizeof(double) * (A_host->bufmax[3]));
 	A_gpu->acc_U_buff = (double *) tmp_ptr;
-	checkGPUErrors(gpuMallocHost ( &tmp_ptr, sizeof(int_t) * (A_host->bufmax[0])));
+	gpuMallocHost ( &tmp_ptr, sizeof(int_t) * (A_host->bufmax[0]));
 	A_gpu->scubufs[streamId].lsub_buf =  (int_t *) tmp_ptr;
-	checkGPUErrors(gpuMallocHost ( &tmp_ptr, sizeof(int_t) * (A_host->bufmax[2])));
+	gpuMallocHost ( &tmp_ptr, sizeof(int_t) * (A_host->bufmax[2]));
 	A_gpu->scubufs[streamId].usub_buf = (int_t *) tmp_ptr;
 
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  remain_l_max * sizeof(double) )) ;
+	gpuMalloc( &tmp_ptr,  remain_l_max * sizeof(double) );
 	A_gpu->scubufs[streamId].Remain_L_buff = (double *) tmp_ptr;
 	gpu_mem_used += remain_l_max * sizeof(double);
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  bigu_size * sizeof(double) )) ;
+	gpuMalloc( &tmp_ptr,  bigu_size * sizeof(double) );
 	A_gpu->scubufs[streamId].bigU = (double *) tmp_ptr;
 	gpu_mem_used += bigu_size * sizeof(double);
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  mcb * sizeof(Ublock_info_t) )) ;
+	gpuMalloc( &tmp_ptr,  mcb * sizeof(Ublock_info_t) );
 	A_gpu->scubufs[streamId].Ublock_info = (Ublock_info_t *) tmp_ptr;
 	gpu_mem_used += mcb * sizeof(Ublock_info_t);
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  mrb * sizeof(Remain_info_t) )) ;
+	gpuMalloc( &tmp_ptr,  mrb * sizeof(Remain_info_t) );
 	A_gpu->scubufs[streamId].Remain_info = (Remain_info_t *) tmp_ptr;
 	gpu_mem_used += mrb * sizeof(Remain_info_t);
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  buffer_size * sizeof(double))) ;
+	gpuMalloc( &tmp_ptr,  buffer_size * sizeof(double));
 	A_gpu->scubufs[streamId].bigV = (double *) tmp_ptr;
 	gpu_mem_used += buffer_size * sizeof(double);
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  A_host->bufmax[0]*sizeof(int_t))) ;
+	gpuMalloc( &tmp_ptr,  A_host->bufmax[0]*sizeof(int_t));
 	A_gpu->scubufs[streamId].lsub = (int_t *) tmp_ptr;
 	gpu_mem_used += A_host->bufmax[0] * sizeof(int_t);
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  A_host->bufmax[2]*sizeof(int_t))) ;
+	gpuMalloc( &tmp_ptr,  A_host->bufmax[2]*sizeof(int_t));
 	A_gpu->scubufs[streamId].usub = (int_t *) tmp_ptr;
 	gpu_mem_used += A_host->bufmax[2] * sizeof(int_t);
 
@@ -1351,12 +1354,13 @@ void dCopyLUToGPU3D (
 	    gpuEventCreate(&(stat->ePCIeD2H_End[i]));
 
 		//YL: need the following to avoid calling gpuEventElapsedTime later with nonrecorded event
-		checkGPUErrors(gpuEventRecord(stat->GemmStart[i], sluGPU->funCallStreams[0]));
-		checkGPUErrors(gpuEventRecord(stat->GemmEnd[i], sluGPU->funCallStreams[0]));
-		checkGPUErrors(gpuEventRecord(stat->ScatterEnd[i], sluGPU->funCallStreams[0]));
-		checkGPUErrors(gpuEventRecord(stat->ePCIeH2D[i], sluGPU->funCallStreams[0]));
-		checkGPUErrors(gpuEventRecord(stat->ePCIeD2H_Start[i], sluGPU->funCallStreams[0]));
-		checkGPUErrors(gpuEventRecord(stat->ePCIeD2H_End[i], sluGPU->funCallStreams[0]));
+            gpuEventRecord(stat->GemmStart[i], sluGPU->funCallStreams[0]);
+            gpuEventRecord(stat->GemmEnd[i], sluGPU->funCallStreams[0]);
+            gpuEventRecord(stat->ScatterEnd[i], sluGPU->funCallStreams[0]);
+            gpuEventRecord(stat->ePCIeH2D[i], sluGPU->funCallStreams[0]);
+            gpuEventRecord(stat->ePCIeD2H_Start[i], sluGPU->funCallStreams[0]);
+            gpuEventRecord(stat->ePCIeD2H_End[i], sluGPU->funCallStreams[0]);
+
 
 	}
 
@@ -1423,17 +1427,17 @@ void dCopyLUToGPU3D (
 	} /* endfor all block columns */
 
     /* Allocate L memory on GPU, and copy the values from CPU to GPU */
-    checkGPUErrors(gpuMalloc(  &tmp_ptr,  cum_num_l_blocks * sizeof(local_l_blk_info_t))) ;
+    gpuMalloc( &tmp_ptr,  cum_num_l_blocks * sizeof(local_l_blk_info_t));
     A_gpu->local_l_blk_infoVec = (local_l_blk_info_t *) tmp_ptr;
     gpu_mem_used += cum_num_l_blocks * sizeof(local_l_blk_info_t);
-    checkGPUErrors(gpuMemcpy( (A_gpu->local_l_blk_infoVec), local_l_blk_infoVec, cum_num_l_blocks * sizeof(local_l_blk_info_t), gpuMemcpyHostToDevice)) ;
-	free(local_l_blk_infoVec);
+    gpuMemcpy( (A_gpu->local_l_blk_infoVec), local_l_blk_infoVec, cum_num_l_blocks * sizeof(local_l_blk_info_t), gpuMemcpyHostToDevice);
+    free(local_l_blk_infoVec);
 
-    checkGPUErrors(gpuMalloc(  &tmp_ptr,  CEILING(nsupers, Pc)*sizeof(int_t))) ;
+    gpuMalloc( &tmp_ptr,  CEILING(nsupers, Pc)*sizeof(int_t));
     A_gpu->local_l_blk_infoPtr = (int_t *) tmp_ptr;
     gpu_mem_used += CEILING(nsupers, Pc) * sizeof(int_t);
-    checkGPUErrors(gpuMemcpy( (A_gpu->local_l_blk_infoPtr), local_l_blk_infoPtr, CEILING(nsupers, Pc)*sizeof(int_t), gpuMemcpyHostToDevice)) ;
-	free(local_l_blk_infoPtr);
+    gpuMemcpy( (A_gpu->local_l_blk_infoPtr), local_l_blk_infoPtr, CEILING(nsupers, Pc)*sizeof(int_t), gpuMemcpyHostToDevice);
+    free(local_l_blk_infoPtr);
 
     /*---- Copy U data structure to GPU ----*/
 
@@ -1494,16 +1498,16 @@ void dCopyLUToGPU3D (
 		}
 	}
 
-	checkGPUErrors(gpuMalloc( &tmp_ptr,  cum_num_u_blocks * sizeof(local_u_blk_info_t))) ;
+	gpuMalloc( &tmp_ptr,  cum_num_u_blocks * sizeof(local_u_blk_info_t));
 	A_gpu->local_u_blk_infoVec = (local_u_blk_info_t *) tmp_ptr;
 	gpu_mem_used += cum_num_u_blocks * sizeof(local_u_blk_info_t);
-	checkGPUErrors(gpuMemcpy( (A_gpu->local_u_blk_infoVec), local_u_blk_infoVec, cum_num_u_blocks * sizeof(local_u_blk_info_t), gpuMemcpyHostToDevice)) ;
+        gpuMemcpy( (A_gpu->local_u_blk_infoVec), local_u_blk_infoVec, cum_num_u_blocks * sizeof(local_u_blk_info_t), gpuMemcpyHostToDevice);
 	free(local_u_blk_infoVec);
 
-	checkGPUErrors(gpuMalloc( &tmp_ptr,  CEILING(nsupers, Pr)*sizeof(int_t))) ;
+	gpuMalloc( &tmp_ptr,  CEILING(nsupers, Pr)*sizeof(int_t));
 	A_gpu->local_u_blk_infoPtr = (int_t *) tmp_ptr;
 	gpu_mem_used += CEILING(nsupers, Pr) * sizeof(int_t);
-	checkGPUErrors(gpuMemcpy( (A_gpu->local_u_blk_infoPtr), local_u_blk_infoPtr, CEILING(nsupers, Pr)*sizeof(int_t), gpuMemcpyHostToDevice)) ;
+	gpuMemcpy( (A_gpu->local_u_blk_infoPtr), local_u_blk_infoPtr, CEILING(nsupers, Pr)*sizeof(int_t), gpuMemcpyHostToDevice);
 	free(local_u_blk_infoPtr);
 
 	/* Copy the actual L indices and values */
@@ -1683,21 +1687,21 @@ void dCopyLUToGPU3D (
 		}
 	}
 
-	checkGPUErrors(gpuMalloc( &tmp_ptr,  l_ind_len * sizeof(int_t))) ;
+	gpuMalloc( &tmp_ptr,  l_ind_len * sizeof(int_t));
 	A_gpu->LrowindVec = (int_t *) tmp_ptr;
-	checkGPUErrors(gpuMemcpy( (A_gpu->LrowindVec), indtemp, l_ind_len * sizeof(int_t), gpuMemcpyHostToDevice)) ;
+	gpuMemcpy( (A_gpu->LrowindVec), indtemp, l_ind_len * sizeof(int_t), gpuMemcpyHostToDevice);
 
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  l_val_len * sizeof(double)));
+	gpuMalloc(  &tmp_ptr,  l_val_len * sizeof(double));
 	A_gpu->LnzvalVec = (double *) tmp_ptr;
-	checkGPUErrors(gpuMemset( (A_gpu->LnzvalVec), 0, l_val_len * sizeof(double)));
+	gpuMemset( (A_gpu->LnzvalVec), 0, l_val_len * sizeof(double));
 
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  l_k * sizeof(int_t))) ;
+	gpuMalloc(  &tmp_ptr,  l_k * sizeof(int_t));
 	A_gpu->LrowindPtr = (int_t *) tmp_ptr;
-	checkGPUErrors(gpuMemcpy( (A_gpu->LrowindPtr), temp_LrowindPtr, l_k * sizeof(int_t), gpuMemcpyHostToDevice)) ;
+	gpuMemcpy( (A_gpu->LrowindPtr), temp_LrowindPtr, l_k * sizeof(int_t), gpuMemcpyHostToDevice);
 
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  l_k * sizeof(int_t))) ;
+	gpuMalloc(  &tmp_ptr,  l_k * sizeof(int_t));
 	A_gpu->LnzvalPtr = (int_t *) tmp_ptr;
-	checkGPUErrors(gpuMemcpy( (A_gpu->LnzvalPtr), temp_LnzvalPtr, l_k * sizeof(int_t), gpuMemcpyHostToDevice)) ;
+	gpuMemcpy( (A_gpu->LnzvalPtr), temp_LnzvalPtr, l_k * sizeof(int_t), gpuMemcpyHostToDevice);
 
 	A_gpu->LnzvalPtr_host = temp_LnzvalPtr;
 
@@ -1714,31 +1718,31 @@ void dCopyLUToGPU3D (
 		}
 	}
 
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  u_ind_len * sizeof(int_t))) ;
+	gpuMalloc(  &tmp_ptr,  u_ind_len * sizeof(int_t));
 	A_gpu->UrowindVec = (int_t *) tmp_ptr;
-	checkGPUErrors(gpuMemcpy( (A_gpu->UrowindVec), indtemp1, u_ind_len * sizeof(int_t), gpuMemcpyHostToDevice)) ;
+	gpuMemcpy( (A_gpu->UrowindVec), indtemp1, u_ind_len * sizeof(int_t), gpuMemcpyHostToDevice);
 
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  u_val_len * sizeof(double)));
+	gpuMalloc(  &tmp_ptr,  u_val_len * sizeof(double));
 	A_gpu->UnzvalVec = (double *) tmp_ptr;
-	checkGPUErrors(gpuMemset( (A_gpu->UnzvalVec), 0, u_val_len * sizeof(double)));
+	gpuMemset( (A_gpu->UnzvalVec), 0, u_val_len * sizeof(double));
 
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  u_k * sizeof(int_t))) ;
+	gpuMalloc(  &tmp_ptr,  u_k * sizeof(int_t));
 	A_gpu->UrowindPtr = (int_t *) tmp_ptr;
-	checkGPUErrors(gpuMemcpy( (A_gpu->UrowindPtr), temp_UrowindPtr, u_k * sizeof(int_t), gpuMemcpyHostToDevice)) ;
+	gpuMemcpy( (A_gpu->UrowindPtr), temp_UrowindPtr, u_k * sizeof(int_t), gpuMemcpyHostToDevice);
 
 	A_gpu->UnzvalPtr_host = temp_UnzvalPtr;
 
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  u_k * sizeof(int_t))) ;
+	gpuMalloc(  &tmp_ptr,  u_k * sizeof(int_t));
 	A_gpu->UnzvalPtr = (int_t *) tmp_ptr;
-	checkGPUErrors(gpuMemcpy( (A_gpu->UnzvalPtr), temp_UnzvalPtr, u_k * sizeof(int_t), gpuMemcpyHostToDevice)) ;
+	gpuMemcpy( (A_gpu->UnzvalPtr), temp_UnzvalPtr, u_k * sizeof(int_t), gpuMemcpyHostToDevice);
 
-	checkGPUErrors(gpuMalloc(  &tmp_ptr,  (nsupers + 1)*sizeof(int_t))) ;
+	gpuMalloc(  &tmp_ptr,  (nsupers + 1)*sizeof(int_t));
 	A_gpu->xsup = (int_t *) tmp_ptr;
-	checkGPUErrors(gpuMemcpy( (A_gpu->xsup), xsup, (nsupers + 1)*sizeof(int_t), gpuMemcpyHostToDevice)) ;
+	gpuMemcpy( (A_gpu->xsup), xsup, (nsupers + 1)*sizeof(int_t), gpuMemcpyHostToDevice);
 
-	checkGPUErrors(gpuMalloc( &tmp_ptr,  sizeof(dLUstruct_gpu_t))) ;
+	gpuMalloc( &tmp_ptr,  sizeof(dLUstruct_gpu_t));
 	*dA_gpu = (dLUstruct_gpu_t *) tmp_ptr;
-	checkGPUErrors(gpuMemcpy( *dA_gpu, A_gpu, sizeof(dLUstruct_gpu_t), gpuMemcpyHostToDevice)) ;
+	gpuMemcpy( *dA_gpu, A_gpu, sizeof(dLUstruct_gpu_t), gpuMemcpyHostToDevice);
 
 	free (temp_LrowindPtr);
 	free (temp_UrowindPtr);

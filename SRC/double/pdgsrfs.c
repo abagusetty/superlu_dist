@@ -251,6 +251,7 @@ pdgsrfs(superlu_dist_options_t *options, int_t n,
 	    } else {
 		break;
 	    }
+            printf("c. in PRNTlevel>=1 pdgsrfs call from pdgsrfs.c\n");            
 	} /* end while */
 
 	stat->RefineSteps = count;

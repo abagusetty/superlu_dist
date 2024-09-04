@@ -222,16 +222,16 @@ if ( msg0 && msg2 ) {  /* L(:,k) and U(k,:) are not empty. */
 
                     #ifdef HAVE_SYCL
                     oneapi::mkl::blas::column_major::gemm(*streams[stream_id],
-                                            GPUBLAS_OP_N, GPUBLAS_OP_N,
-                                            nbrow, num_col_stream, ldu,
-                                            alpha,
-                                            (const gpuDoubleComplex*) dA,
-                                            nbrow,
-                                            (const gpuDoubleComplex*) &dB[b_offset],
-                                            ldu,
-                                            beta,
-                                            (gpuDoubleComplex*)&dC[c_offset],
-                                            nbrow);
+                                                          GPUBLAS_OP_N, GPUBLAS_OP_N,
+                                                          std::int64_t(nbrow), std::int64_t(num_col_stream), std::int64_t(ldu),
+                                                          gpuDoubleComplex(alpha.r, alpha.i),
+                                                          (const gpuDoubleComplex*) dA,
+                                                          std::int64_t(nbrow),
+                                                          (const gpuDoubleComplex*) &dB[b_offset],
+                                                          std::int64_t(ldu),
+                                                          gpuDoubleComplex(beta.r, beta.i),
+                                                          (gpuDoubleComplex*)&dC[c_offset],
+                                                          std::int64_t(nbrow));
                     #else                    
 		    gpublasCheckErrors(
 				  gpublasSetStream(handle[stream_id],
@@ -615,6 +615,3 @@ if ( msg0 && msg2 ) {  /* L(:,k) and U(k,:) are not empty. */
     } /* if nbrow>0 */
 
  }   /* if msg1 and msg 2 */
-
-
-

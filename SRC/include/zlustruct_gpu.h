@@ -27,23 +27,6 @@
 //#define MAX_BLOCK_SIZE 10000
 #define MAX_NGPU_STREAMS 32
 
-#if defined(HAVE_CUDA) || defined(HAVE_HIP)
-static
-void check(gpuError_t result, char const *const func, const char *const file, int const line)
-{
-    if (result)
-    {
-        fprintf(stderr, "GPU error at file %s: line %d code=(%s) \"%s\" \n",
-                file, line, gpuGetErrorString(result), func);
-
-        // Make sure we call GPU Device Reset before exiting
-        exit(EXIT_FAILURE);
-    }
-}
-
-#define checkGPUErrors(val)  check ( (val), #val, __FILE__, __LINE__ )
-#endif // #if defined(HAVE_CUDA) || defined(HAVE_HIP)
-
 typedef struct //SCUbuf_gpu_
 {
     /*Informations for various buffers*/
